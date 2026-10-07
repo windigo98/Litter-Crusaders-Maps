@@ -85,10 +85,15 @@
       <section class="screen" id="screen-crew" aria-label="Crew">
         <div class="screen-head">
           <h1>👨‍👩‍👧 Crew</h1>
-          <p class="sub">Grown-ups: add each kid so everyone gets their own Litter-dex on this device.</p>
+          <p class="sub">Family or class: grown-ups create a shared crew; kids join with a nickname only (no emails).</p>
         </div>
+        <div class="link-card" id="linkCard"></div>
         <div class="leaderboard" id="leaderboard"></div>
-        <button class="big-btn secondary" id="addKidBtn">➕ Add a crew member</button>
+        <div class="crew-actions" id="crewActions">
+          <button class="big-btn" id="createCrewBtn">✨ Create family / class crew</button>
+          <button class="big-btn secondary" id="joinCrewBtn">🔑 Join with family or class code</button>
+          <button class="big-btn secondary" id="addKidBtn">➕ Add on this phone only</button>
+        </div>
       </section>
     </main>
 
@@ -226,6 +231,11 @@
   <script src="js/parks.js"></script>
   <script src="js/activities.js"></script>
   <script src="js/game.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="js/crew-sync.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

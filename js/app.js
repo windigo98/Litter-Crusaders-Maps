@@ -39,6 +39,8 @@
   let state = load();
   if (!state.bosses) state.bosses = [];
   if (!state.parkStatus) state.parkStatus = 'idle';
+  if (!state.link) state.link = null; // { code, name, kind, role, memberId, backend }
+  if (!state.remote) state.remote = { members: [], catches: [] };
   state.profiles.forEach(function (pr) {
     if (!pr.ispy) pr.ispy = { finds: 0, streak: 0, bestStreak: 0, seen: {} };
     if (!pr.room) pr.room = { baseline: null, baselineAt: null, finds: 0, round: null };
@@ -269,8 +271,34 @@
   });
 
   function visibleCatches() {
-    const showCrew = state.profiles.length > 1 && state.settings.mapFilter === 'crew';
-    return state.catches.filter(function (c) { return showCrew || c.profileId === me().id; });
+    const linked = !!(state.link && state.link.code);
+    const multi = state.profiles.length > 1 || linked;
+    const showCrew = multi && state.settings.mapFilter === 'crew';
+    const local = state.catches.filter(function (c) { return showCrew || c.profileId === me().id; });
+    if (!showCrew || !linked) return local;
+    const remote = (state.remote.catches || []).filter(function (c) {
+      return c.memberId !== (state.link && state.link.memberId);
+    }).map(function (c) {
+      return {
+        id: 'remote-' + c.id,
+        profileId: 'remote:' + c.memberId,
+        type: c.type,
+        count: c.count || 1,
+        lat: c.lat,
+        lng: c.lng,
+        ts: c.ts,
+        remote: true,
+        remoteName: (function () {
+          const m = (state.remote.members || []).find(function (x) { return x.id === c.memberId; });
+          return m ? m.nickname : 'Crewmate';
+        })(),
+        remoteAvatar: (function () {
+          const m = (state.remote.members || []).find(function (x) { return x.id === c.memberId; });
+          return m ? m.avatar : '🧤';
+        })()
+      };
+    });
+    return local.concat(remote);
   }
   let popNewId = null;
   function renderPins() {
@@ -279,12 +307,12 @@
     visibleCatches().forEach(function (c) {
       const cr = G.byId[c.type] || G.byId.mystery;
       const html = '<div class="pin-body" style="--c:' + RARITY[cr.rarity].color + '">' + svg(cr.id) + (c.count > 1 ? '<span class="pin-count">×' + c.count + '</span>' : '') + '</div>';
-      const icon = L.divIcon({ className: 'lm-pin' + (c.id === popNewId ? ' pop' : ''), html: html, iconSize: [52, 52], iconAnchor: [8, 60], popupAnchor: [18, -56] });
+      const icon = L.divIcon({ className: 'lm-pin' + (c.remote ? ' remote' : '') + (c.id === popNewId ? ' pop' : ''), html: html, iconSize: [52, 52], iconAnchor: [8, 60], popupAnchor: [18, -56] });
       const m = L.marker([c.lat, c.lng], { icon: icon }).addTo(pinLayer);
       m.bindPopup(function () { return popupHtml(c); }, { maxWidth: 240 });
     });
     popNewId = null;
-    const multi = state.profiles.length > 1;
+    const multi = state.profiles.length > 1 || !!(state.link && state.link.code);
     $('#crewFilter').classList.toggle('hidden', !multi);
     $$('#crewFilter .seg').forEach(function (b) { b.classList.toggle('active', b.dataset.filter === (state.settings.mapFilter || 'me')); });
     renderBossPins();
@@ -373,13 +401,16 @@
     const cr = G.byId[c.type] || G.byId.mystery;
     const who = state.profiles.find(function (p) { return p.id === c.profileId; });
     const d = new Date(c.ts);
+    const byline = c.remote
+      ? ('<br>Caught by ' + esc((c.remoteAvatar || '') + ' ' + (c.remoteName || 'Crewmate')) + ' · blurred pin')
+      : (who && (state.profiles.length > 1 || (state.link && state.link.code)) ? '<br>Caught by ' + esc(who.avatar + ' ' + who.name) : '');
     const div = document.createElement('div');
     div.className = 'pop';
     div.innerHTML = svg(cr.id) + '<b>' + esc(cr.name) + (c.count > 1 ? ' ×' + c.count : '') + '</b>' +
       '<small>' + esc(cr.item) + '<br>' + d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) + ' · ' + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) +
-      (who && state.profiles.length > 1 ? '<br>Caught by ' + esc(who.avatar + ' ' + who.name) : '') + '</small>' +
-      (c.photo ? '<img src="' + c.photo + '" alt="photo of the catch">' : '') +
-      (c.profileId === me().id ? '<button class="mini-del">Oops, remove this</button>' : '');
+      byline + '</small>' +
+      (c.photo && !c.remote ? '<img src="' + c.photo + '" alt="photo of the catch">' : '') +
+      (c.profileId === me().id && !c.remote ? '<button class="mini-del">Oops, remove this</button>' : '');
     const del = div.querySelector('.mini-del');
     if (del) del.addEventListener('click', function () {
       if (!confirm('Remove this catch?')) return;
@@ -481,6 +512,13 @@
     const after = myStats();
     $('#catchSheet').classList.add('hidden');
     popNewId = c.id; renderPins(); renderHeader();
+    // Cross-phone: publish blurred catch (no photo) when linked
+    if (state.link && state.link.code && window.LMCrewSync) {
+      const pts = G.catchPoints(c);
+      window.LMCrewSync.publishCatch(state.link.code, state.link.memberId, c, pts).then(function (room) {
+        if (room) applyRemoteRoom(room);
+      }).catch(function (err) { console.warn('crew publish', err); });
+    }
     celebrateCatch(pick, c, before, after, firstOfKind, unlocked, bossHits, spawned);
   }
   $('#confirmCatchBtn').addEventListener('click', doCatch);
@@ -692,21 +730,261 @@
     }).join('') : '<li class="empty">No catches yet. Tap the big Catch! button on the map 🧤</li>';
   }
 
-  // ---------- Crew ----------
+  // ---------- Crew (local profiles + cross-phone Family/Class link) ----------
+  let crewUnwatch = null;
+  function applyRemoteRoom(room) {
+    if (!room) return;
+    state.remote = {
+      members: room.members || [],
+      catches: room.catches || []
+    };
+    if (state.link) {
+      state.link.name = room.name || state.link.name;
+      state.link.kind = room.kind || state.link.kind;
+    }
+    save();
+    if (current === 'crew') renderCrew();
+    renderPins();
+  }
+  function startCrewWatch() {
+    if (crewUnwatch) { try { crewUnwatch(); } catch (e) {} crewUnwatch = null; }
+    if (!state.link || !state.link.code || !window.LMCrewSync) return;
+    crewUnwatch = window.LMCrewSync.watch(state.link.code, function (room) {
+      if (room) applyRemoteRoom(room);
+    });
+  }
+  function backendLabel() {
+    if (!window.LMCrewSync) return 'offline';
+    return window.LMCrewSync.firebaseReady() ? 'cloud' : 'this-device demo';
+  }
+  function renderLinkCard() {
+    const el = $('#linkCard'); if (!el) return;
+    const Sync = window.LMCrewSync;
+    const cloud = Sync && Sync.firebaseReady();
+    if (!state.link || !state.link.code) {
+      el.className = 'link-card' + (cloud ? '' : ' offline');
+      el.innerHTML =
+        '<div class="lc-kicker">Family or class linking</div>' +
+        '<div class="lc-name">Not linked to a shared crew yet</div>' +
+        '<div class="lc-meta">A grown-up / teacher creates a crew and shares the 6-letter family or class code. Kids join with a nickname + emoji only — no emails. Photos stay on each phone; map pins are blurred (~150 m).' +
+        (cloud ? '' : ' <b>Cloud sync needs a free Firebase config</b> (see CREW.md). Until then, create/join works for demos on this device/tabs.') +
+        '</div>';
+      return;
+    }
+    const kind = state.link.kind === 'class' ? 'Class' : 'Family';
+    el.className = 'link-card';
+    el.innerHTML =
+      '<div class="lc-kicker">' + kind + ' crew · ' + esc(backendLabel()) + '</div>' +
+      '<div class="lc-code">' + esc(state.link.code) + '</div>' +
+      '<div class="lc-name">' + esc(state.link.name || (kind + ' crew')) + '</div>' +
+      '<div class="lc-meta">You are <b>' + esc(me().name) + '</b> (' + (state.link.role === 'host' ? 'creator' : 'member') + '). Share this family or class code so others can join.</div>' +
+      '<div class="lc-actions">' +
+        '<button class="chip-btn go" id="copyCrewCode">📋 Copy code</button>' +
+        '<button class="chip-btn" id="refreshCrew">🔄 Refresh</button>' +
+        '<button class="chip-btn del" id="leaveCrewBtn">🚪 Leave crew</button>' +
+      '</div>';
+    const copy = $('#copyCrewCode');
+    if (copy) copy.addEventListener('click', function () {
+      const code = state.link.code;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(code).then(function () { toast('📋 Copied ' + code); }).catch(function () { toast(code); });
+      } else { toast(code); }
+    });
+    const ref = $('#refreshCrew');
+    if (ref) ref.addEventListener('click', function () {
+      Sync.fetchCrew(state.link.code).then(function (room) {
+        if (room) { applyRemoteRoom(room); toast('🔄 Crew updated'); }
+        else toast('😕 Could not reach crew');
+      }).catch(function () { toast('😕 Sync failed'); });
+    });
+    const leave = $('#leaveCrewBtn');
+    if (leave) leave.addEventListener('click', function () { leaveLinkedCrew(); });
+  }
   function renderCrew() {
-    const crew = G.crewInfo(state, me().id);
+    renderLinkCard();
+    const Sync = window.LMCrewSync;
+    const linked = !!(state.link && state.link.code);
+    const rows = [];
+    // Local device profiles
+    const localCrew = G.crewInfo(state, me().id);
+    localCrew.ranked.forEach(function (r) {
+      rows.push({
+        key: 'local:' + r.p.id,
+        name: r.p.name,
+        avatar: r.p.avatar,
+        points: r.s.points,
+        detail: 'Lv ' + r.s.level.level + ' · ' + r.s.items + ' caught · this phone',
+        active: r.p.id === me().id,
+        remote: false,
+        profileId: r.p.id
+      });
+    });
+    // Remote linked members
+    if (linked) {
+      (state.remote.members || []).forEach(function (m) {
+        if (m.id === state.link.memberId) return; // already shown as local active identity
+        // Avoid dup if nickname matches only — always show remote roster
+        rows.push({
+          key: 'remote:' + m.id,
+          name: m.nickname || 'Crewmate',
+          avatar: m.avatar || '🧤',
+          points: m.points || 0,
+          detail: (m.role === 'host' ? 'Creator · ' : '') + 'linked phone',
+          active: false,
+          remote: true,
+          profileId: null
+        });
+      });
+    }
+    rows.sort(function (a, b) { return b.points - a.points; });
     const medals = ['🥇', '🥈', '🥉'];
-    $('#leaderboard').innerHTML = crew.ranked.map(function (r, i) {
-      const active = r.p.id === me().id;
-      return '<div class="lb-row' + (active ? ' active' : '') + '"><span class="lb-rank">' + (medals[i] || i + 1) + '</span><span class="avatar">' + esc(r.p.avatar) + '</span>' +
-        '<div class="lb-meta"><b>' + esc(r.p.name) + (active ? ' <small>(playing)</small>' : '') + '</b><small>Lv ' + r.s.level.level + ' · ' + r.s.items + ' caught · ' + r.s.distinct + '/12 dex · 🏅' + Object.keys(r.p.badges || {}).length + '</small></div>' +
-        '<div class="lb-pts">' + r.s.points + '<small>points</small></div>' +
-        '<div class="lb-actions">' + (active ? '' : '<button class="chip-btn go" data-play="' + r.p.id + '">▶ Play as</button>') +
-        '<button class="chip-btn" data-edit="' + r.p.id + '">✏️ Edit</button>' + (state.profiles.length > 1 ? '<button class="chip-btn del" data-del="' + r.p.id + '">🗑️ Remove</button>' : '') + '</div></div>';
-    }).join('');
+    $('#leaderboard').innerHTML = rows.length ? rows.map(function (r, i) {
+      return '<div class="lb-row' + (r.active ? ' active' : '') + (r.remote ? ' remote' : '') + '">' +
+        '<span class="lb-rank">' + (medals[i] || (i + 1)) + '</span><span class="avatar">' + esc(r.avatar) + '</span>' +
+        '<div class="lb-meta"><b>' + esc(r.name) + (r.active ? ' <small>(you)</small>' : '') +
+        (r.remote ? '<span class="lb-tag">linked</span>' : '') + '</b><small>' + esc(r.detail) + '</small></div>' +
+        '<div class="lb-pts">' + r.points + '<small>points</small></div>' +
+        '<div class="lb-actions">' +
+          (!r.remote && !r.active ? '<button class="chip-btn go" data-play="' + r.profileId + '">▶ Play as</button>' : '') +
+          (!r.remote ? '<button class="chip-btn" data-edit="' + r.profileId + '">✏️ Edit</button>' : '') +
+          (!r.remote && state.profiles.length > 1 ? '<button class="chip-btn del" data-del="' + r.profileId + '">🗑️ Remove</button>' : '') +
+        '</div></div>';
+    }).join('') : '<div class="lb-row"><div class="lb-meta"><b>No one here yet</b><small>Create or join a family / class crew!</small></div></div>';
     $$('[data-play]').forEach(function (b) { b.addEventListener('click', function () { switchTo(b.dataset.play); }); });
     $$('[data-edit]').forEach(function (b) { b.addEventListener('click', function () { editKid(b.dataset.edit); }); });
     $$('[data-del]').forEach(function (b) { b.addEventListener('click', function () { removeKid(b.dataset.del); }); });
+    // Toggle action buttons when linked
+    const createBtn = $('#createCrewBtn');
+    const joinBtn = $('#joinCrewBtn');
+    if (createBtn) createBtn.classList.toggle('hidden', linked);
+    if (joinBtn) joinBtn.classList.toggle('hidden', linked);
+  }
+  function avatarPickerHtml(selected) {
+    return '<div class="field">Pick an animal buddy</div><div class="avatar-pick">' +
+      AVATARS.map(function (a) { return '<button type="button" data-av="' + a + '" class="' + (a === selected ? 'sel' : '') + '">' + a + '</button>'; }).join('') +
+      '</div>';
+  }
+  function openCreateCrew() {
+    const Sync = window.LMCrewSync;
+    if (!Sync) { toast('Crew sync not loaded'); return; }
+    let kind = 'family';
+    let av = me().avatar || '🦊';
+    openModal('Create family / class crew',
+      '<p class="small-print">Grown-ups / teachers create the crew. Kids join later with the family or class code + a nickname only.</p>' +
+      '<div class="kind-pick">' +
+        '<button type="button" data-kind="family" class="sel">👨‍👩‍👧 Family</button>' +
+        '<button type="button" data-kind="class">🏫 Class</button>' +
+      '</div>' +
+      '<label class="field">Crew name (optional)<input type="text" id="crewName" maxlength="32" placeholder="e.g. Rivera family or Room 12"></label>' +
+      '<label class="field">Your nickname<input type="text" id="crewNick" maxlength="16" value="' + esc(me().name) + '" placeholder="e.g. Coach Sam"></label>' +
+      avatarPickerHtml(av) +
+      '<label class="field">Adult PIN (optional, for later moderation)<input type="password" id="crewPin" maxlength="8" inputmode="numeric" placeholder="4–8 digits"></label>' +
+      '<button class="big-btn" id="crewCreateGo">Create &amp; get code ✨</button>' +
+      '<p class="small-print">🔒 No kid emails. Shared map pins are blurred. Photos never upload.</p>');
+    $$('.kind-pick button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        kind = b.dataset.kind;
+        $$('.kind-pick button').forEach(function (x) { x.classList.toggle('sel', x === b); });
+      });
+    });
+    $$('.avatar-pick button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        av = b.dataset.av;
+        $$('.avatar-pick button').forEach(function (x) { x.classList.toggle('sel', x === b); });
+      });
+    });
+    $('#crewCreateGo').addEventListener('click', function () {
+      const name = ($('#crewName').value || '').trim();
+      const nick = ($('#crewNick').value || '').trim() || 'Explorer';
+      const pin = ($('#crewPin').value || '').trim();
+      const btn = $('#crewCreateGo'); btn.disabled = true; btn.textContent = 'Creating…';
+      Sync.createCrew({ name: name, kind: kind, nickname: nick, avatar: av, pin: pin }).then(function (res) {
+        me().name = nick; me().avatar = av;
+        state.link = {
+          code: res.code,
+          name: res.room.name,
+          kind: res.room.kind,
+          role: 'host',
+          memberId: res.memberId,
+          backend: Sync.backendName()
+        };
+        state.settings.mapFilter = 'crew';
+        applyRemoteRoom(res.room);
+        save();
+        startCrewWatch();
+        closeModal();
+        renderAll();
+        toast('🎉 Crew code ' + res.code + ' — share with your family or class!');
+      }).catch(function (err) {
+        btn.disabled = false; btn.textContent = 'Create & get code ✨';
+        toast('😕 Could not create crew');
+        console.warn(err);
+      });
+    });
+  }
+  function openJoinCrew() {
+    const Sync = window.LMCrewSync;
+    if (!Sync) { toast('Crew sync not loaded'); return; }
+    let av = me().avatar || '🐼';
+    openModal('Join with family or class code',
+      '<p class="small-print">Ask your grown-up or teacher for the 6-letter code. Use a nickname only — never your real full name or email.</p>' +
+      '<label class="field">Family or class code<input type="text" id="joinCode" class="code-input" maxlength="6" placeholder="ABC123" autocomplete="off"></label>' +
+      '<label class="field">Your nickname<input type="text" id="joinNick" maxlength="16" value="' + esc(me().name) + '" placeholder="e.g. Maya"></label>' +
+      avatarPickerHtml(av) +
+      '<label class="field">Adult PIN (only if they set one)<input type="password" id="joinPin" maxlength="8" inputmode="numeric" placeholder="optional"></label>' +
+      '<button class="big-btn" id="crewJoinGo">Join crew 🔑</button>');
+    $$('.avatar-pick button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        av = b.dataset.av;
+        $$('.avatar-pick button').forEach(function (x) { x.classList.toggle('sel', x === b); });
+      });
+    });
+    $('#crewJoinGo').addEventListener('click', function () {
+      const code = Sync.normalizeCode($('#joinCode').value);
+      const nick = ($('#joinNick').value || '').trim() || 'Explorer';
+      const pin = ($('#joinPin').value || '').trim();
+      if (code.length < 6) { toast('Enter the full 6-letter code'); return; }
+      const btn = $('#crewJoinGo'); btn.disabled = true; btn.textContent = 'Joining…';
+      Sync.joinCrew({ code: code, nickname: nick, avatar: av, pin: pin }).then(function (res) {
+        me().name = nick; me().avatar = av;
+        state.link = {
+          code: res.code,
+          name: res.room.name,
+          kind: res.room.kind,
+          role: 'member',
+          memberId: res.memberId,
+          backend: Sync.backendName()
+        };
+        state.settings.mapFilter = 'crew';
+        applyRemoteRoom(res.room);
+        save();
+        startCrewWatch();
+        closeModal();
+        renderAll();
+        toast('🙌 Joined ' + (res.room.name || 'crew') + '!');
+      }).catch(function (err) {
+        btn.disabled = false; btn.textContent = 'Join crew 🔑';
+        if (err && err.code === 'NO_ROOM') {
+          toast(Sync.firebaseReady()
+            ? '😕 No crew with that code'
+            : '😕 Code not found on this phone — cloud sync needed for other phones (CREW.md)');
+        } else if (err && err.code === 'BAD_PIN') toast('😕 Wrong adult PIN');
+        else { toast('😕 Could not join'); console.warn(err); }
+      });
+    });
+  }
+  function leaveLinkedCrew() {
+    if (!state.link) return;
+    if (!confirm('Leave this family / class crew on this phone? Your local catches stay here.')) return;
+    const Sync = window.LMCrewSync;
+    const code = state.link.code, mid = state.link.memberId;
+    if (crewUnwatch) { try { crewUnwatch(); } catch (e) {} crewUnwatch = null; }
+    if (Sync) Sync.leaveCrew(code, mid).catch(function () {});
+    state.link = null;
+    state.remote = { members: [], catches: [] };
+    save();
+    renderAll();
+    toast('🚪 Left the shared crew');
   }
   function switchTo(id) {
     state.activeId = id; save();
@@ -718,33 +996,37 @@
   function editKid(id) {
     const p = id ? state.profiles.find(function (x) { return x.id === id; }) : null;
     let av = p ? p.avatar : AVATARS[(state.profiles.length) % AVATARS.length];
-    openModal(p ? 'Edit crew member' : 'Add a crew member',
-      '<label class="field">Name (first name or nickname)<input type="text" id="kidName" maxlength="16" value="' + (p ? esc(p.name) : '') + '" placeholder="e.g. Maya"></label>' +
-      '<div class="field">Pick an animal buddy</div><div class="avatar-pick">' + AVATARS.map(function (a) { return '<button data-av="' + a + '" class="' + (a === av ? 'sel' : '') + '">' + a + '</button>'; }).join('') + '</div>' +
-      '<button class="big-btn" id="kidSave">' + (p ? 'Save ✅' : 'Add to crew ➕') + '</button>' +
-      '<p class="small-print">🔒 Tip: use a nickname. Everything stays on this device.</p>');
+    openModal(p ? 'Edit crew member' : 'Add on this phone',
+      '<label class="field">Nickname<input type="text" id="kidName" maxlength="16" value="' + (p ? esc(p.name) : '') + '" placeholder="e.g. Maya"></label>' +
+      avatarPickerHtml(av) +
+      '<button class="big-btn" id="kidSave">' + (p ? 'Save ✅' : 'Add on this phone ➕') + '</button>' +
+      '<p class="small-print">🔒 Tip: nickname only. For other phones, use Create / Join with a family or class code.</p>');
     $$('.avatar-pick button').forEach(function (b) { b.addEventListener('click', function () { av = b.dataset.av; $$('.avatar-pick button').forEach(function (x) { x.classList.toggle('sel', x === b); }); }); });
     $('#kidSave').addEventListener('click', function () {
       const name = $('#kidName').value.trim() || 'Explorer';
-      let target = p;
       if (p) { p.name = name; p.avatar = av; }
-      else { target = { id: uid(), name: name, avatar: av, createdAt: Date.now(), claims: {}, badges: {}, safetyPledgeAt: me().safetyPledgeAt || null }; if (state.demoActive) target.demo = false; state.profiles.push(target); }
+      else {
+        const target = { id: uid(), name: name, avatar: av, createdAt: Date.now(), claims: {}, badges: {}, safetyPledgeAt: me().safetyPledgeAt || null };
+        state.profiles.push(target);
+      }
       save(); closeModal();
       let un = { badges: [] };
       state.profiles.forEach(function (x) { const r = G.evaluate(state, x.id, Date.now(), { silent: x.id !== me().id }); if (x.id === me().id) un = r; });
-      save(); renderAll(); if (!p) toast('🎉 ' + name + ' joined the crew!');
+      save(); renderAll(); if (!p) toast('🎉 ' + name + ' added on this phone!');
       flushBadges(un);
     });
   }
   function removeKid(id) {
     const p = state.profiles.find(function (x) { return x.id === id; });
-    if (!p || !confirm('Remove ' + p.name + ' and all their catches?')) return;
+    if (!p || !confirm('Remove ' + p.name + ' and all their catches on this phone?')) return;
     state.profiles = state.profiles.filter(function (x) { return x.id !== id; });
     state.catches = state.catches.filter(function (c) { return c.profileId !== id; });
     if (state.activeId === id) state.activeId = state.profiles[0].id;
     save(); renderAll();
   }
   $('#addKidBtn').addEventListener('click', function () { editKid(null); });
+  $('#createCrewBtn').addEventListener('click', openCreateCrew);
+  $('#joinCrewBtn').addEventListener('click', openJoinCrew);
   $('#playerChip').addEventListener('click', function () {
     if (state.profiles.length < 2) { show('crew'); return; }
     openModal('Who\'s playing?', '<div class="leaderboard">' + state.profiles.map(function (p) {
@@ -766,8 +1048,8 @@
       '<label class="big-btn secondary small" style="display:flex;align-items:center;justify-content:center;cursor:pointer">📂 Import data<input type="file" accept="application/json,.json" id="setImport" hidden></label>' +
       (state.demoActive ? '<button class="big-btn small" id="setDemoOff">🧹 Remove demo data</button>' : '<button class="big-btn secondary small" id="setDemo">✨ Load demo data</button>') +
       '<button class="big-btn danger small" id="setReset">🗑️ Reset everything</button>' +
-      '<p class="small-print">🔒 Litter Crusaders Maps has no accounts and no server: everything (including photos and locations) is saved only on this device. ' +
-      'Map data © OpenStreetMap contributors. Demo data adds pretend catches near you so you can try things out; remove it any time.</p>');
+      '<p class="small-print">🔒 Nicknames only — no kid emails. Photos stay on this device. Optional family/class crew sync shares blurred map pins (~150 m) and nicknames when a grown-up enables free Firebase (CREW.md). ' +
+      'Map data © OpenStreetMap contributors. Demo data adds pretend catches near you; remove it any time.</p>');
     $('#setSound').addEventListener('change', function (e) { state.settings.sound = e.target.checked; save(); });
     $('#setSafety').addEventListener('click', function () { closeModal(); showOnboarding(true); });
     $('#setExport').addEventListener('click', exportData);
@@ -1084,6 +1366,16 @@
     if (current === 'badges') renderBadges();
     if (current === 'crew') renderCrew();
   }
+  // Resume linked crew watch after reload
+  if (state.link && state.link.code) {
+    startCrewWatch();
+    if (window.LMCrewSync) {
+      window.LMCrewSync.fetchCrew(state.link.code).then(function (room) {
+        if (room) applyRemoteRoom(room);
+      }).catch(function () {});
+    }
+  }
+
   window.LitterMap = { state: function () { return state; }, loadDemo: loadDemo, removeDemo: removeDemo, show: show, openBoss: openBossSheet, spawnBosses: function () { return G.spawnBosses(state); }, openIspy: openIspy, openRoom: openRoom, lookupPark: function (lat, lng, force) { return lookupPark(lat || (pos && pos.lat), lng || (pos && pos.lng), !!force); }, applyPark: applyPark, fitPark: fitParkView };
 
   if (!state.settings.onboarded) showOnboarding(false);

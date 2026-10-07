@@ -34,6 +34,7 @@ ssh -R 80:localhost:8090 nokey@localhost.run        # prints https://<random>.lh
 - **On the way — I Spy**: car-ride camera game with rotating kid-safe prompts (red car, stop sign, bird…). Grown-up drives; photos stay on-device; Road Trip Scout badge.
 - **At home — What's different?**: snap a clean-room baseline, later snap again and mark differences (sock, toy moved…). Room Ranger badge.
 - **Park bosses**: after enough catches in an area (~220 m cell), a big cleanup challenge appears (Park Pest, Trash Titan, Beach Blob, Playground Pile, Picnic Phantom, Street Sweep Scourge). Shared HP bar the whole crew can chip away at by catching the right litter nearby. Defeat = bonus points + unique badge; **Boss Buster** for clearing 3 different bosses. Tone is fun & non-violent ("send packing" / "recycle away").
+- **Family / class crew linking**: grown-up/teacher creates a 6-letter code; kids join with nickname + emoji only. Shared blurred map pins + leaderboard when Firebase is configured (see CREW.md). Same-phone crew profiles still work offline.
 - **Crew mode**: multiple kids on one device, "Play as", leaderboard, "Just me / Whole crew" map filter, crew badges.
 - **Settings**: sound, re-show safety rules, export/import JSON, load/remove **demo data**, reset everything.
 - PWA: manifest, icons, service worker (app shell offline; map tiles load live).
@@ -46,6 +47,9 @@ ssh -R 80:localhost:8090 nokey@localhost.run        # prints https://<random>.lh
 - `js/activities.js` I Spy + What's different? prompts
 - `js/game.js` rules: points/levels/stats/badges/quests/stories/bosses (pure functions)
 - `js/app.js` UI, map, persistence, demo data
+- `js/crew-sync.js` family/class 6-letter codes, blurred shared pins, leaderboard sync
+- `js/firebase-config.js` optional Firebase web config (empty stub until a grown-up pastes it)
+- `CREW.md` grown-up setup for cross-phone crews
 - `sw.js`, `manifest.webmanifest`, `icons/`
 - `tools/screenshots.js` Playwright script used for `screenshots/` (needs `playwright-core`; see `/workspace/litter-map-tools`)
 
