@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Litter Crusaders Maps: Catch 'em all, clean 'em all!</title>
-  <meta name="description" content="A catch-'em-all litter cleanup game for kids and families.">
+  <title>Litter Crusaders Maps — grab trash, bag wins, vibe high</title>
+  <meta name="description" content="Catch litter creatures, clean parks, vibe with your crew — for kids and families.">
   <meta name="theme-color" content="#22c55e">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
@@ -48,7 +48,7 @@
         <div class="park-chip hidden" id="parkChip"></div>
         <div class="crew-filter hidden" id="crewFilter">
           <button class="seg active" data-filter="me">Just me</button>
-          <button class="seg" data-filter="crew">Whole crew</button>
+          <button class="seg" data-filter="crew">Whole squad</button>
         </div>
         <button class="boss-peek hidden" id="bossPeek" aria-label="Open boss challenge"></button>
         <button class="quest-peek hidden" id="questPeek" aria-label="Open quests"></button>
@@ -66,7 +66,7 @@
       <section class="screen" id="screen-quests" aria-label="Quests">
         <div class="screen-head">
           <h1>📜 Quests</h1>
-          <p class="sub">Finish quests for bonus points and secret badges!</p>
+          <p class="sub">Knock out little missions for bonus pts + secret flex badges.</p>
         </div>
         <div id="questsBox"></div>
       </section>
@@ -85,14 +85,14 @@
       <section class="screen" id="screen-crew" aria-label="Crew">
         <div class="screen-head">
           <h1>👨‍👩‍👧 Crew</h1>
-          <p class="sub">Family or class: grown-ups create a shared crew; kids join with a nickname only (no emails).</p>
+          <p class="sub">Squad up with fam or class — a grown-up starts it, kids hop in with a nickname only (no emails).</p>
         </div>
         <div class="link-card" id="linkCard"></div>
         <div class="leaderboard" id="leaderboard"></div>
         <div class="crew-actions" id="crewActions">
-          <button class="big-btn" id="createCrewBtn">✨ Create family / class crew</button>
-          <button class="big-btn secondary" id="joinCrewBtn">🔑 Join with family or class code</button>
-          <button class="big-btn secondary" id="addKidBtn">➕ Add on this phone only</button>
+          <button class="big-btn" id="createCrewBtn">✨ Start a fam / class crew</button>
+          <button class="big-btn secondary" id="joinCrewBtn">🔑 Got a crew code? Jump in</button>
+          <button class="big-btn secondary" id="addKidBtn">➕ Add a buddy on this phone</button>
         </div>
       </section>
     </main>
@@ -113,18 +113,18 @@
       <div class="ob-hero">
         <div class="ob-creatures" id="obCreatures"></div>
         <h1 id="obTitle">Litter Crusaders Maps</h1>
-        <p class="ob-tag">Catch 'em all, clean 'em all!</p>
+        <p class="ob-tag">Grab trash, bag wins, vibe high ✨</p>
       </div>
-      <h2 class="ob-h2">Before we go hunting… 🦸 Safety Squad rules!</h2>
+      <h2 class="ob-h2">Real quick before we roll… 🦸 Safety Squad check</h2>
       <ul class="safety-list">
-        <li><span class="s-ico">🧤</span><span><b>Wear gloves</b> or use a litter grabber.</span></li>
-        <li><span class="s-ico">🧑‍🤝‍🧑</span><span><b>Bring a grown-up helper</b> and stay where they can see you.</span></li>
-        <li><span class="s-ico">🚫</span><span><b>Never touch sharp things</b> like glass, needles or metal. Point and <b>tell a grown-up!</b></span></li>
-        <li><span class="s-ico">🚗</span><span><b>Stay away from roads</b> and water.</span></li>
-        <li><span class="s-ico">🧼</span><span><b>Wash your hands</b> when you're done.</span></li>
+        <li><span class="s-ico">🧤</span><span><b>Gloves on</b> (or grabber) — keep those hands happy.</span></li>
+        <li><span class="s-ico">🧑‍🤝‍🧑</span><span><b>Bring your grown-up</b> and stay where they can see you. Team effort.</span></li>
+        <li><span class="s-ico">🚫</span><span><b>Sharp stuff = hands off</b> (glass, needles, metal). Point it out and <b>tell a grown-up!</b></span></li>
+        <li><span class="s-ico">🚗</span><span><b>Skip roads and water edges</b> — we clean, we don't freestyle into danger.</span></li>
+        <li><span class="s-ico">🧼</span><span><b>Wash up</b> when you're done. Easy win.</span></li>
       </ul>
-      <label class="pledge"><input type="checkbox" id="pledgeBox"> <span>I promise to be a safe litter hunter!</span></label>
-      <button class="big-btn" id="startBtn" disabled>Let's go! 🚀</button>
+      <label class="pledge"><input type="checkbox" id="pledgeBox"> <span>I'm in — I'll hunt litter the safe way 🤝</span></label>
+      <button class="big-btn" id="startBtn" disabled>Bet. Let's roll 🚀</button>
     </div>
   </div>
 
@@ -133,30 +133,30 @@
     <div class="sheet">
       <div class="sheet-grip"></div>
       <div class="sheet-head">
-        <h2 id="catchTitle">What did you find?</h2>
+        <h2 id="catchTitle">Yo — what’d you grab?</h2>
         <button class="icon-btn" data-close aria-label="Close">✖️</button>
       </div>
       <div class="step" id="step1">
         <div class="pick-grid" id="pickGrid"></div>
-        <p class="safety-note adult" style="margin-top:14px">🛑 Found a needle, broken glass or something scary? <b>Don't touch it!</b> Tell a grown-up right away.</p>
+        <p class="safety-note adult" style="margin-top:14px">🛑 Needle, broken glass, or anything sketchy? <b>Don't touch it.</b> Flag a grown-up right away.</p>
       </div>
       <div class="step hidden" id="step2">
         <div class="picked" id="pickedBox"></div>
         <div class="safety-note hidden" id="safetyNote"></div>
         <div class="count-row">
-          <span class="count-label">How many?</span>
+          <span class="count-label">How many we talkin'?</span>
           <button class="count-btn" id="countMinus" aria-label="Fewer">−</button>
           <span class="count-num" id="countNum">1</span>
           <button class="count-btn" id="countPlus" aria-label="More">+</button>
         </div>
         <label class="photo-btn" id="photoLabel">
           <input type="file" accept="image/*" capture="environment" id="photoInput" hidden>
-          <span id="photoText">📸 Snap a photo (optional)</span>
+          <span id="photoText">📸 Optional flex pic</span>
         </label>
         <img class="photo-preview hidden" id="photoPreview" alt="Your photo">
         <div class="step-actions">
           <button class="big-btn secondary small" id="backBtn">⬅ Back</button>
-          <button class="big-btn" id="confirmCatchBtn">Catch it! ✨</button>
+          <button class="big-btn" id="confirmCatchBtn">Log it ✨</button>
         </div>
       </div>
     </div>
@@ -211,7 +211,7 @@
       <div class="cel-desc hidden" id="celDesc"></div>
       <div class="cel-points" id="celPoints">+10 pts</div>
       <div class="cel-extras" id="celExtras"></div>
-      <button class="big-btn" id="celOk">Awesome! 🎉</button>
+      <button class="big-btn" id="celOk">Let's goo 🎉</button>
     </div>
   </div>
 

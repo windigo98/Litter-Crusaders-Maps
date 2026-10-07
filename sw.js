@@ -1,6 +1,6 @@
 /* Litter Crusaders Maps service worker: caches the app shell so it opens offline.
    Map tiles are NOT pre-cached (OpenStreetMap tile policy) — they load live. */
-const CACHE = 'litter-crusaders-maps-v5';
+const CACHE = 'litter-crusaders-maps-v6';
 const SHELL = ['./', 'index.html', 'css/styles.css', 'js/creatures.js', 'js/bosses.js', 'js/parks.js', 'js/activities.js', 'js/game.js', 'js/firebase-config.js', 'js/crew-sync.js', 'js/app.js',
   'vendor/leaflet.js', 'vendor/leaflet.css', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())); });

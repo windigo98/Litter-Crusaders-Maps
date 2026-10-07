@@ -121,7 +121,7 @@
     // Getting started
     { id: 'glove_guardian', cat: 'Getting started', icon: '🧤', name: 'Glove Guardian', desc: 'Took the Safety Squad pledge', test: function (s, x) { return !!x.profile.safetyPledgeAt; } },
     { id: 'first_catch', cat: 'Getting started', icon: '🎉', name: 'First Catch', desc: 'Catch your very first creature', test: function (s) { return s.items >= 1; }, prog: function (s) { return prog(s.items, 1); } },
-    { id: 'first_photo', cat: 'Getting started', icon: '📸', name: 'Snapshot Scout', desc: 'Snap a photo of a catch', test: function (s) { return s.photos >= 1; } },
+    { id: 'first_photo', cat: 'Getting started', icon: '📸', name: 'Snapshot Scout', desc: 'Snap a flex pic of a catch', test: function (s) { return s.photos >= 1; } },
     { id: 'park_finder', cat: 'Getting started', icon: '🏞️', name: 'Park Finder', desc: 'Discover a real park on the map', test: function (s, x) { return !!(x.profile.parkFoundAt || (x.state && x.state.park && x.state.park.name)); } },
     { id: 'road_trip_scout', cat: 'On the way', icon: '🚗', name: 'Road Trip Scout', desc: 'Spot 8 things on an I Spy ride', test: function (s) { return s.ispyFinds >= 8; }, prog: function (s) { return prog(s.ispyFinds, 8); } },
     { id: 'ispy_streak', cat: 'On the way', icon: '👀', name: 'Eagle Eyes', desc: 'Find 3 I Spy things in a row without skipping', test: function (s) { return s.ispyBestStreak >= 3; }, prog: function (s) { return prog(s.ispyBestStreak, 3); } },
@@ -145,9 +145,9 @@
     { id: 'spots_5', cat: 'Streaks & exploring', icon: '🏘️', name: 'Neighborhood Hero', desc: 'Clean up in 5 different spots', test: function (s) { return s.spots >= 5; }, prog: function (s) { return prog(s.spots, 5); } },
     { id: 'spots_15', cat: 'Streaks & exploring', icon: '🧭', name: 'Trailblazer', desc: 'Clean up in 15 different spots', test: function (s) { return s.spots >= 15; }, prog: function (s) { return prog(s.spots, 15); } },
     // Quests
-    { id: 'quest_1', cat: 'Quests', icon: '📜', name: 'Quest Rookie', desc: 'Finish your first quest', test: function (s) { return s.questsDone >= 1; } },
-    { id: 'daily_triple', cat: 'Quests', icon: '🌟', name: 'Triple Star', desc: 'Finish all 3 daily quests in one day', test: function (s) { return s.dailyTriple; } },
-    { id: 'quest_10', cat: 'Quests', icon: '🗝️', name: 'Quest Master', desc: 'Finish 10 quests', test: function (s) { return s.questsDone >= 10; }, prog: function (s) { return prog(s.questsDone, 10); } },
+    { id: 'quest_1', cat: 'Quests', icon: '📜', name: 'Quest Rookie', desc: 'Clear your first quest', test: function (s) { return s.questsDone >= 1; } },
+    { id: 'daily_triple', cat: 'Quests', icon: '🌟', name: 'Triple Star', desc: 'Clear all 3 daily quests in one day', test: function (s) { return s.dailyTriple; } },
+    { id: 'quest_10', cat: 'Quests', icon: '🗝️', name: 'Quest Master', desc: 'Clear 10 quests', test: function (s) { return s.questsDone >= 10; }, prog: function (s) { return prog(s.questsDone, 10); } },
     // Story (awarded by story quests)
     { id: 'story_park', cat: 'Story', icon: '🐿️', name: 'Park Ranger', desc: 'Finish "The Park Rescue"', story: 'park' },
     { id: 'story_ocean', cat: 'Story', icon: '🐢', name: 'Ocean Guardian', desc: 'Finish "Ocean Friends"', story: 'ocean' },
@@ -162,9 +162,9 @@
     { id: 'boss_street_scourge', cat: 'Park bosses', icon: '🧹', name: 'Street Sweeper', desc: 'Sweep up the Street Sweep Scourge', boss: 'street_scourge' },
     { id: 'boss_buster', cat: 'Park bosses', icon: '🦸', name: 'Boss Buster', desc: 'Send 3 different park bosses packing', test: function (s) { return s.bossesDefeated >= 3; }, prog: function (s) { return prog(s.bossesDefeated, 3); } },
     // Crew
-    { id: 'crew_join', cat: 'Crew', icon: '🤝', name: 'Crew Member', desc: 'Be part of a crew of 2 or more', test: function (s, x) { return x.crew.size >= 2; } },
-    { id: 'crew_team', cat: 'Crew', icon: '👫', name: 'Team Clean-up', desc: 'Clean up on the same day as a crew mate', test: function (s, x) { return x.crew.teamDay && s.items > 0; } },
-    { id: 'crew_captain', cat: 'Crew', icon: '🦸', name: 'Crew Captain', desc: 'Be #1 on your crew leaderboard', test: function (s, x) { return x.crew.isTop; } }
+    { id: 'crew_join', cat: 'Crew', icon: '🤝', name: 'Crew Member', desc: 'Roll with a crew of 2+', test: function (s, x) { return x.crew.size >= 2; } },
+    { id: 'crew_team', cat: 'Crew', icon: '👫', name: 'Team Clean-up', desc: 'Clean up same day as a crew mate', test: function (s, x) { return x.crew.teamDay && s.items > 0; } },
+    { id: 'crew_captain', cat: 'Crew', icon: '🦸', name: 'Crew Captain', desc: 'Sit #1 on the crew leaderboard', test: function (s, x) { return x.crew.isTop; } }
   ];
   BADGES.forEach(function (b) {
     if (b.story) b.test = function (s, x) { return !!(x.profile.claims || {})['s:' + b.story]; };
@@ -234,7 +234,7 @@
   // ---------- story quests ----------
   const STORIES = [
     { id: 'park', icon: '🌳', title: 'The Park Rescue', reward: 100, badge: 'story_park',
-      text: 'Oh no! Litter creatures have taken over Acorn Park and the squirrels can\'t find their acorns. Can you help?',
+      text: 'Yo — litter critters took over Acorn Park and the squirrels can\'t find their acorns. You in?',
       chapters: [
         { t: 'Catch your first creature', k: 'items', n: 1 },
         { t: 'Catch 3 different kinds of creature', k: 'distinct', n: 3 },
@@ -242,7 +242,7 @@
         { t: 'Clean up on 3 different days', k: 'days', n: 3 }
       ] },
     { id: 'ocean', icon: '🐢', title: 'Ocean Friends', reward: 150, badge: 'story_ocean',
-      text: 'Litter can blow into drains and rivers and float all the way to the sea. Shelly the sea turtle needs you!',
+      text: 'Trash drifts into drains → rivers → ocean. Shelly the sea turtle needs the squad.',
       chapters: [
         { t: 'Catch 5 Bottle Blobs', k: 'type', type: 'bottle', n: 5 },
         { t: 'Catch 3 Bag Ghosts', k: 'type', type: 'bag', n: 3 },
@@ -250,7 +250,7 @@
         { t: 'Catch 3 Straw Noodles', k: 'type', type: 'straw', n: 3 }
       ] },
     { id: 'explorer', icon: '🧭', title: 'The Great Explorer', reward: 200, badge: 'story_explorer',
-      text: 'The Map Makers Guild needs brave explorers to clean every corner of the neighborhood. Pack your gloves!',
+      text: 'Map Makers Guild wants explorers cleaning every neighborhood corner. Gloves up.',
       chapters: [
         { t: 'Clean up in 2 different spots', k: 'spots', n: 2 },
         { t: 'Snap photos of 3 catches', k: 'photos', n: 3 },
@@ -258,7 +258,7 @@
         { t: 'Catch 50 pieces of litter', k: 'items', n: 50 }
       ] },
     { id: 'legend', icon: '🦄', title: 'Legend of the Mystery Mimic', reward: 300, badge: 'story_legend',
-      text: 'They say a shimmering Mystery Mimic hides somewhere nearby. Only a true Litter Legend can find it...',
+      text: 'Word is a shimmering Mystery Mimic is hiding nearby. Litter Legend energy only...',
       chapters: [
         { t: 'Discover 6 creatures in your Litter-dex', k: 'distinct', n: 6 },
         { t: 'Keep a 3-day clean-up streak', k: 'bestStreak', n: 3 },

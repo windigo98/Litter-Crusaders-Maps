@@ -47,7 +47,7 @@
   });
   function save() {
     try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); return true; }
-    catch (e) { toast('😬 Storage is full. Try exporting and removing old photos.'); return false; }
+    catch (e) { toast('😬 Storage\'s packed. Export + ditch old photos?'); return false; }
   }
   function me() { return state.profiles.find(function (p) { return p.id === state.activeId; }) || state.profiles[0]; }
   function myStats() { return G.stats(state, me().id); }
@@ -115,7 +115,7 @@
       if (moveMode || posSource !== 'gps') {
         setPos(e.latlng.lat, e.latlng.lng, 'manual');
         if (moveMode) toggleMove(false);
-        toast('📍 Got it! This is your spot now.');
+        toast('📍 Locked in. That\'s your spot.');
       }
     });
     if (state.settings.lastPos) setPos(start.lat, start.lng, state.settings.lastPosSource === 'gps' ? 'saved' : 'manual', true);
@@ -160,7 +160,7 @@
         // Award quietly so GPS/park load does not interrupt the map with a modal.
         G.evaluate(state, pr.id, Date.now(), { silent: true });
         save();
-        toast('🏞️ Park found: ' + park.name + '!');
+        toast('🏞️ Park unlocked: ' + park.name + '!');
       }
     }
     save();
@@ -217,7 +217,7 @@
     }
     if (st === 'found' && park) {
       el.className = 'park-chip' + (park.source === 'fixture' ? ' fixture' : '');
-      el.textContent = (park.contains ? "🏞️ You're in " : '🏞️ Near ') + park.name + '!';
+      el.textContent = (park.contains ? "🏞️ You\'re in " : '🏞️ Near ') + park.name + '!';
       el.classList.remove('hidden'); return;
     }
     if (st === 'none' || st === 'error') {
@@ -233,13 +233,13 @@
     if (override) { el.textContent = override; return; }
     if (moveMode) { el.textContent = '✋ Tap the map where you are'; el.classList.add('setting'); return; }
     if (state.park && state.parkStatus === 'found') {
-      el.textContent = (state.park.contains ? "🏞️ You're in " : '🏞️ Near ') + state.park.name + '!';
+      el.textContent = (state.park.contains ? "🏞️ You\'re in " : '🏞️ Near ') + state.park.name + '!';
       el.classList.add('park'); return;
     }
-    if (posSource === 'gps') el.textContent = '📍 You\'re here! Find litter creatures!';
-    else if (posSource === 'manual') el.textContent = '📍 Spot set by tap. ✋ to move';
+    if (posSource === 'gps') el.textContent = '📍 You\'re on the map — go find litter creatures!';
+    else if (posSource === 'manual') el.textContent = '📍 Spot set by tap. Hit ✋ to scoot';
     else if (posSource === 'saved') el.textContent = '📍 Finding you…';
-    else { el.textContent = '📍 No GPS? Tap the map to set your spot'; el.classList.add('warn'); }
+    else { el.textContent = '📍 No GPS? Just tap the map to drop your spot'; el.classList.add('warn'); }
   }
   function startGeo() {
     if (!('geolocation' in navigator)) { if (!pos) setPos(DEFAULT_POS.lat, DEFAULT_POS.lng, 'none'); updateStatus(); return; }
@@ -390,7 +390,7 @@
       crewHtml +
       '<div class="boss-reward">🎁 Reward: <b>+' + def.reward + ' pts</b> &amp; the <b>' + esc((G.BADGES.find(function (b) { return b.id === def.badge; }) || { name: 'boss' }).name) + '</b> badge</div>' +
       (defeated
-        ? '<button class="big-btn" id="bossOkBtn">Awesome! 🎉</button>'
+        ? '<button class="big-btn" id="bossOkBtn">Let\'s goo 🎉</button>'
         : '<button class="big-btn" id="bossCatchBtn">Catch litter to clean it! 🧤</button>');
     $('#bossSheet').classList.remove('hidden');
     const ok = $('#bossOkBtn'); if (ok) ok.addEventListener('click', function () { $('#bossSheet').classList.add('hidden'); });
@@ -459,7 +459,7 @@
       note.innerHTML = '🧤 <b>Yucky one!</b> Wear gloves or use a grabber, or ask a grown-up to pick it up.<label><input type="checkbox" id="safeOk"> I used gloves / a grabber</label>';
     } else if (pick.safety === 'adult') {
       note.className = 'safety-note adult';
-      note.innerHTML = '⚠️ <b>Grown-ups only!</b> Glass can be sharp. Kids: don\'t touch it. Point it out to your grown-up helper.<label><input type="checkbox" id="safeOk"> A grown-up picked this up safely</label>';
+      note.innerHTML = '⚠️ <b>Grown-ups only.</b> Glass is sharp — kids don\'t touch. Point it out to your grown-up.<label><input type="checkbox" id="safeOk"> Grown-up handled this safely</label>';
     }
     $('#countNum').textContent = count;
     $('#photoPreview').classList.add('hidden'); $('#photoText').textContent = '📸 Snap a photo (optional)'; $('#photoInput').value = '';
@@ -477,7 +477,7 @@
     shrinkImage(f, 640, 0.7).then(function (data) {
       photoData = data; const img = $('#photoPreview'); img.src = data; img.classList.remove('hidden');
       $('#photoText').textContent = '📸 Retake photo';
-    }).catch(function () { $('#photoText').textContent = '📸 Snap a photo (optional)'; toast('Could not read that photo'); });
+    }).catch(function () { $('#photoText').textContent = '📸 Snap a photo (optional)'; toast('Couldn\'t read that pic, try again'); });
   });
   function shrinkImage(file, max, q) {
     return new Promise(function (res, rej) {
@@ -549,7 +549,7 @@
     bossHits = bossHits || []; spawned = spawned || [];
     const el = $('#celebrate'); el.classList.remove('badge-mode', 'boss-mode');
     $('#celCreature').innerHTML = svg(cr.id);
-    $('#celTitle').textContent = firstOfKind ? 'NEW CATCH!' : pickOne(['Gotcha!', 'Caught it!', 'Woohoo!', 'Super catch!']);
+    $('#celTitle').textContent = firstOfKind ? 'NEW CATCH UNLOCKED!' : pickOne(['Gotcha!', 'Bagged it!', 'Woo!', 'Clean grab!']);
     $('#celName').textContent = cr.name + (c.count > 1 ? ' ×' + c.count : '');
     $('#celDesc').classList.add('hidden');
     $('#celPoints').textContent = '+' + G.catchPoints(c) + ' pts';
@@ -587,7 +587,7 @@
     const el = $('#celebrate'); el.classList.remove('badge-mode'); el.classList.add('boss-mode');
     const def = hit.def, inst = hit.inst;
     $('#celCreature').innerHTML = bossSvg(def.id);
-    $('#celTitle').textContent = pickOne(['Sent packing!', 'All cleaned up!', 'Recycled away!', 'Boss busted!']);
+    $('#celTitle').textContent = pickOne(['Sent packing!', 'Mess handled!', 'Recycled into oblivion!', 'Boss down!']);
     $('#celName').textContent = def.name;
     $('#celDesc').textContent = 'The mess pile is gone — nice teamwork!'; $('#celDesc').classList.remove('hidden');
     $('#celPoints').textContent = '+' + def.reward + ' pts'; $('#celPoints').classList.remove('hidden');
@@ -598,7 +598,7 @@
     let ex = '';
     ex += extra('🏅', 'Badge unlocked: ' + esc((G.BADGES.find(function (b) { return b.id === def.badge; }) || {}).name || 'Boss badge'), '', 0.4);
     if (contribs.length) ex += extra('👨‍👩‍👧', 'Crew helpers <small>' + esc(contribs.join(' · ')) + '</small>', '', 0.52);
-    ex += extra('✨', 'Tap the map to find more park bosses after enough clean-ups in an area!', 'fact', 0.64);
+    ex += extra('✨', 'Keep cleaning a spot and park bosses show up. Trust.', 'fact', 0.64);
     $('#celExtras').innerHTML = ex;
     el.classList.remove('hidden'); confetti(); chime('badge');
     if (navigator.vibrate) navigator.vibrate([30, 40, 30, 40, 80]);
@@ -607,7 +607,7 @@
   function celebrateBadge(b) {
     const el = $('#celebrate'); el.classList.remove('boss-mode', 'ispy-mode', 'room-mode'); el.classList.add('badge-mode');
     $('#celCreature').innerHTML = '<div class="badge-medal">' + b.icon + '</div>';
-    $('#celTitle').textContent = 'Badge unlocked!';
+    $('#celTitle').textContent = 'Badge unlocked, let\'s go!';
     $('#celName').textContent = b.name;
     $('#celDesc').textContent = b.desc; $('#celDesc').classList.remove('hidden');
     $('#celPoints').classList.add('hidden');
@@ -649,7 +649,7 @@
   }
   function dexDetail(id) {
     const c = G.byId[id], s = myStats(), n = s.perType[id] || 0, R = RARITY[c.rarity];
-    const safety = c.safety === 'adult' ? '<p class="safety-note adult">⚠️ Grown-ups only! Kids, point it out but don\'t touch.</p>' : c.safety === 'gloves' ? '<p class="safety-note">🧤 Always wear gloves or ask a grown-up for this one.</p>' : '';
+    const safety = c.safety === 'adult' ? '<p class="safety-note adult">⚠️ Grown-ups only — kids point it out, don\'t touch.</p>' : c.safety === 'gloves' ? '<p class="safety-note">🧤 Gloves on, or hand it to a grown-up.</p>' : '';
     openModal(n ? c.name : 'Mystery creature',
       '<div class="dex-big' + (n ? '' : ' locked') + '">' + (n ? svg(id) : '<span style="display:inline-block;filter:brightness(0) opacity(.22)">' + svg(id) + '</span>') +
       '<div style="font-weight:900;color:' + R.color + '">' + '★'.repeat(R.stars) + ' ' + R.label + ' · ' + c.points + ' pts</div></div>' +
@@ -676,7 +676,7 @@
     const dDone = daily.filter(function (q) { return p.claims[q.key]; }).length;
     let h = '<div class="quest-group"><div class="quest-group-head"><h2>☀️ Daily quests <small style="font-size:14px;color:var(--muted)">' + dDone + '/3</small></h2><span class="timer-chip">⏰ ' + timeLeft(daily[0].end) + '</span></div>' +
       daily.map(function (q) { return questCard(q, mine, p.claims); }).join('') +
-      (dDone < 3 ? '<p class="small-print" style="margin:0 4px">🌟 Finish all 3 today to earn the <b>Triple Star</b> badge!</p>' : '') + '</div>';
+      (dDone < 3 ? '<p class="small-print" style="margin:0 4px">🌟 Knock out all 3 today for the <b>Triple Star</b> badge. Free flex.</p>' : '') + '</div>';
     h += '<div class="quest-group"><div class="quest-group-head"><h2>📅 Weekly quests</h2><span class="timer-chip">⏰ ' + timeLeft(weekly[0].end) + '</span></div>' +
       weekly.map(function (q) { return questCard(q, mine, p.claims); }).join('') + '</div>';
     h += '<div class="quest-group"><div class="quest-group-head"><h2>📖 Story quests</h2></div>';
@@ -727,7 +727,7 @@
     $('#recentList').innerHTML = recent.length ? recent.map(function (c) {
       const cr = G.byId[c.type]; const d = new Date(c.ts);
       return '<li>' + svg(cr.id) + '<span class="r-meta">' + esc(cr.name) + (c.count > 1 ? ' ×' + c.count : '') + '<small>' + d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' · ' + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + (c.photo ? ' · 📸' : '') + '</small></span><span class="r-pts">+' + G.catchPoints(c) + '</span></li>';
-    }).join('') : '<li class="empty">No catches yet. Tap the big Catch! button on the map 🧤</li>';
+    }).join('') : '<li class="empty">No catches yet. Hit that big Catch! button on the map 🧤</li>';
   }
 
   // ---------- Crew (local profiles + cross-phone Family/Class link) ----------
@@ -765,10 +765,9 @@
       el.className = 'link-card' + (cloud ? '' : ' offline');
       el.innerHTML =
         '<div class="lc-kicker">Family or class linking</div>' +
-        '<div class="lc-name">Not linked to a shared crew yet</div>' +
-        '<div class="lc-meta">A grown-up / teacher creates a crew and shares the 6-letter family or class code. Kids join with a nickname + emoji only — no emails. Photos stay on each phone; map pins are blurred (~150 m).' +
-        (cloud ? '' : ' <b>Cloud sync needs a free Firebase config</b> (see CREW.md). Until then, create/join works for demos on this device/tabs.') +
-        '</div>';
+        '<div class="lc-name">Not linked to a shared crew yet — easy fix</div>' +
+        '<div class="lc-meta">A grown-up starts the crew and drops the 6-letter fam/class code. Kids jump in with a nickname + emoji only — no emails. Photos stay on each phone; map pins stay blurry (~150 m) on purpose.' +
+        (cloud ? '' : ' <b>Cloud sync needs a free Firebase config</b> (CREW.md). Until then create/join is a this-phone demo.</div>');
       return;
     }
     const kind = state.link.kind === 'class' ? 'Class' : 'Family';
@@ -777,7 +776,7 @@
       '<div class="lc-kicker">' + kind + ' crew · ' + esc(backendLabel()) + '</div>' +
       '<div class="lc-code">' + esc(state.link.code) + '</div>' +
       '<div class="lc-name">' + esc(state.link.name || (kind + ' crew')) + '</div>' +
-      '<div class="lc-meta">You are <b>' + esc(me().name) + '</b> (' + (state.link.role === 'host' ? 'creator' : 'member') + '). Share this family or class code so others can join.</div>' +
+      '<div class="lc-meta">You are <b>' + esc(me().name) + '</b> (' + (state.link.role === 'host' ? 'creator' : 'member') + '). Share that fam/class code so the squad can hop in.</div>' +
       '<div class="lc-actions">' +
         '<button class="chip-btn go" id="copyCrewCode">📋 Copy code</button>' +
         '<button class="chip-btn" id="refreshCrew">🔄 Refresh</button>' +
@@ -793,9 +792,9 @@
     const ref = $('#refreshCrew');
     if (ref) ref.addEventListener('click', function () {
       Sync.fetchCrew(state.link.code).then(function (room) {
-        if (room) { applyRemoteRoom(room); toast('🔄 Crew updated'); }
-        else toast('😕 Could not reach crew');
-      }).catch(function () { toast('😕 Sync failed'); });
+        if (room) { applyRemoteRoom(room); toast('🔄 Squad refreshed'); }
+        else toast('😕 Couldn\'t reach the crew');
+      }).catch(function () { toast('😕 Sync hiccup'); });
     });
     const leave = $('#leaveCrewBtn');
     if (leave) leave.addEventListener('click', function () { leaveLinkedCrew(); });
@@ -869,8 +868,8 @@
     if (!Sync) { toast('Crew sync not loaded'); return; }
     let kind = 'family';
     let av = me().avatar || '🦊';
-    openModal('Create family / class crew',
-      '<p class="small-print">Grown-ups / teachers create the crew. Kids join later with the family or class code + a nickname only.</p>' +
+    openModal('Start a fam / class crew',
+      '<p class="small-print">Grown-ups start it. Kids join later with the fam/class code + a nickname. That\'s it.</p>' +
       '<div class="kind-pick">' +
         '<button type="button" data-kind="family" class="sel">👨‍👩‍👧 Family</button>' +
         '<button type="button" data-kind="class">🏫 Class</button>' +
@@ -878,9 +877,9 @@
       '<label class="field">Crew name (optional)<input type="text" id="crewName" maxlength="32" placeholder="e.g. Rivera family or Room 12"></label>' +
       '<label class="field">Your nickname<input type="text" id="crewNick" maxlength="16" value="' + esc(me().name) + '" placeholder="e.g. Coach Sam"></label>' +
       avatarPickerHtml(av) +
-      '<label class="field">Adult PIN (optional, for later moderation)<input type="password" id="crewPin" maxlength="8" inputmode="numeric" placeholder="4–8 digits"></label>' +
-      '<button class="big-btn" id="crewCreateGo">Create &amp; get code ✨</button>' +
-      '<p class="small-print">🔒 No kid emails. Shared map pins are blurred. Photos never upload.</p>');
+      '<label class="field">Adult PIN (optional, for later grown-up stuff)<input type="password" id="crewPin" maxlength="8" inputmode="numeric" placeholder="4–8 digits"></label>' +
+      '<button class="big-btn" id="crewCreateGo">Make it &amp; grab the code ✨</button>' +
+      '<p class="small-print">🔒 No kid emails. Pins stay blurry. Photos never leave the phone.</p>');
     $$('.kind-pick button').forEach(function (b) {
       b.addEventListener('click', function () {
         kind = b.dataset.kind;
@@ -914,10 +913,10 @@
         startCrewWatch();
         closeModal();
         renderAll();
-        toast('🎉 Crew code ' + res.code + ' — share with your family or class!');
+        toast('🎉 Crew code ' + res.code + ' — shoot it to fam or class!');
       }).catch(function (err) {
-        btn.disabled = false; btn.textContent = 'Create & get code ✨';
-        toast('😕 Could not create crew');
+        btn.disabled = false; btn.textContent = 'Make it & grab the code ✨';
+        toast('😕 Couldn\'t spin up the crew');
         console.warn(err);
       });
     });
@@ -926,13 +925,13 @@
     const Sync = window.LMCrewSync;
     if (!Sync) { toast('Crew sync not loaded'); return; }
     let av = me().avatar || '🐼';
-    openModal('Join with family or class code',
-      '<p class="small-print">Ask your grown-up or teacher for the 6-letter code. Use a nickname only — never your real full name or email.</p>' +
-      '<label class="field">Family or class code<input type="text" id="joinCode" class="code-input" maxlength="6" placeholder="ABC123" autocomplete="off"></label>' +
+    openModal('Jump in with a fam / class code',
+      '<p class="small-print">Ask your grown-up for the 6-letter code. Nickname only — skip real name/email.</p>' +
+      '<label class="field">Fam / class code<input type="text" id="joinCode" class="code-input" maxlength="6" placeholder="ABC123" autocomplete="off"></label>' +
       '<label class="field">Your nickname<input type="text" id="joinNick" maxlength="16" value="' + esc(me().name) + '" placeholder="e.g. Maya"></label>' +
       avatarPickerHtml(av) +
       '<label class="field">Adult PIN (only if they set one)<input type="password" id="joinPin" maxlength="8" inputmode="numeric" placeholder="optional"></label>' +
-      '<button class="big-btn" id="crewJoinGo">Join crew 🔑</button>');
+      '<button class="big-btn" id="crewJoinGo">I\'m in 🔑</button>');
     $$('.avatar-pick button').forEach(function (b) {
       b.addEventListener('click', function () {
         av = b.dataset.av;
@@ -943,7 +942,7 @@
       const code = Sync.normalizeCode($('#joinCode').value);
       const nick = ($('#joinNick').value || '').trim() || 'Explorer';
       const pin = ($('#joinPin').value || '').trim();
-      if (code.length < 6) { toast('Enter the full 6-letter code'); return; }
+      if (code.length < 6) { toast('Need the full 6-letter code, fam'); return; }
       const btn = $('#crewJoinGo'); btn.disabled = true; btn.textContent = 'Joining…';
       Sync.joinCrew({ code: code, nickname: nick, avatar: av, pin: pin }).then(function (res) {
         me().name = nick; me().avatar = av;
@@ -961,21 +960,21 @@
         startCrewWatch();
         closeModal();
         renderAll();
-        toast('🙌 Joined ' + (res.room.name || 'crew') + '!');
+        toast('🙌 You\'re in ' + (res.room.name || 'crew') + '!');
       }).catch(function (err) {
-        btn.disabled = false; btn.textContent = 'Join crew 🔑';
+        btn.disabled = false; btn.textContent = 'I\'m in 🔑';
         if (err && err.code === 'NO_ROOM') {
           toast(Sync.firebaseReady()
-            ? '😕 No crew with that code'
-            : '😕 Code not found on this phone — cloud sync needed for other phones (CREW.md)');
-        } else if (err && err.code === 'BAD_PIN') toast('😕 Wrong adult PIN');
-        else { toast('😕 Could not join'); console.warn(err); }
+            ? '😕 No crew matches that code'
+            : '😕 Code isn\'t on this phone — cloud sync needed for other phones (CREW.md)');
+        } else if (err && err.code === 'BAD_PIN') toast('😕 PIN\'s not it');
+        else { toast('😕 Couldn\'t join — try again'); console.warn(err); }
       });
     });
   }
   function leaveLinkedCrew() {
     if (!state.link) return;
-    if (!confirm('Leave this family / class crew on this phone? Your local catches stay here.')) return;
+    if (!confirm('Leave this fam/class crew on this phone? Your local catches stay put.')) return;
     const Sync = window.LMCrewSync;
     const code = state.link.code, mid = state.link.memberId;
     if (crewUnwatch) { try { crewUnwatch(); } catch (e) {} crewUnwatch = null; }
@@ -984,23 +983,23 @@
     state.remote = { members: [], catches: [] };
     save();
     renderAll();
-    toast('🚪 Left the shared crew');
+    toast('🚪 You dipped from the shared crew');
   }
   function switchTo(id) {
     state.activeId = id; save();
     const un = G.evaluate(state, id, Date.now()); save();
     if (meMarker && pos) setPos(pos.lat, pos.lng, posSource, true);
-    renderAll(); toast('👋 Hi ' + me().name + '! Happy hunting!');
+    renderAll(); toast('👋 Yo ' + me().name + '! Go get those litter critters!');
     flushBadges(un);
   }
   function editKid(id) {
     const p = id ? state.profiles.find(function (x) { return x.id === id; }) : null;
     let av = p ? p.avatar : AVATARS[(state.profiles.length) % AVATARS.length];
-    openModal(p ? 'Edit crew member' : 'Add on this phone',
+    openModal(p ? 'Edit buddy' : 'Add a buddy on this phone',
       '<label class="field">Nickname<input type="text" id="kidName" maxlength="16" value="' + (p ? esc(p.name) : '') + '" placeholder="e.g. Maya"></label>' +
       avatarPickerHtml(av) +
-      '<button class="big-btn" id="kidSave">' + (p ? 'Save ✅' : 'Add on this phone ➕') + '</button>' +
-      '<p class="small-print">🔒 Tip: nickname only. For other phones, use Create / Join with a family or class code.</p>');
+      '<button class="big-btn" id="kidSave">' + (p ? 'Save ✅' : 'Add a buddy on this phone ➕') + '</button>' +
+      '<p class="small-print">🔒 Nickname only. Other phones? Use Start / Jump in with a fam/class code.</p>');
     $$('.avatar-pick button').forEach(function (b) { b.addEventListener('click', function () { av = b.dataset.av; $$('.avatar-pick button').forEach(function (x) { x.classList.toggle('sel', x === b); }); }); });
     $('#kidSave').addEventListener('click', function () {
       const name = $('#kidName').value.trim() || 'Explorer';
@@ -1012,7 +1011,7 @@
       save(); closeModal();
       let un = { badges: [] };
       state.profiles.forEach(function (x) { const r = G.evaluate(state, x.id, Date.now(), { silent: x.id !== me().id }); if (x.id === me().id) un = r; });
-      save(); renderAll(); if (!p) toast('🎉 ' + name + ' added on this phone!');
+      save(); renderAll(); if (!p) toast('🎉 ' + name + ' hopped on this phone!');
       flushBadges(un);
     });
   }
@@ -1029,7 +1028,7 @@
   $('#joinCrewBtn').addEventListener('click', openJoinCrew);
   $('#playerChip').addEventListener('click', function () {
     if (state.profiles.length < 2) { show('crew'); return; }
-    openModal('Who\'s playing?', '<div class="leaderboard">' + state.profiles.map(function (p) {
+    openModal('Who\'s rolling?', '<div class="leaderboard">' + state.profiles.map(function (p) {
       return '<button class="lb-row' + (p.id === me().id ? ' active' : '') + '" data-who="' + p.id + '" style="width:100%;text-align:left"><span class="avatar">' + esc(p.avatar) + '</span><div class="lb-meta"><b>' + esc(p.name) + '</b></div></button>';
     }).join('') + '</div>');
     $$('[data-who]').forEach(function (b) { b.addEventListener('click', function () { closeModal(); switchTo(b.dataset.who); }); });
@@ -1043,13 +1042,13 @@
   $('#settingsBtn').addEventListener('click', function () {
     openModal('⚙️ Settings',
       '<label class="setting-row">🔊 Sounds <input type="checkbox" id="setSound"' + (state.settings.sound ? ' checked' : '') + '></label>' +
-      '<button class="big-btn secondary small" id="setSafety">🦸 Safety Squad rules</button>' +
-      '<button class="big-btn secondary small" id="setExport">💾 Export my data (JSON)</button>' +
-      '<label class="big-btn secondary small" style="display:flex;align-items:center;justify-content:center;cursor:pointer">📂 Import data<input type="file" accept="application/json,.json" id="setImport" hidden></label>' +
-      (state.demoActive ? '<button class="big-btn small" id="setDemoOff">🧹 Remove demo data</button>' : '<button class="big-btn secondary small" id="setDemo">✨ Load demo data</button>') +
-      '<button class="big-btn danger small" id="setReset">🗑️ Reset everything</button>' +
-      '<p class="small-print">🔒 Nicknames only — no kid emails. Photos stay on this device. Optional family/class crew sync shares blurred map pins (~150 m) and nicknames when a grown-up enables free Firebase (CREW.md). ' +
-      'Map data © OpenStreetMap contributors. Demo data adds pretend catches near you; remove it any time.</p>');
+      '<button class="big-btn secondary small" id="setSafety">🦸 Safety Squad check</button>' +
+      '<button class="big-btn secondary small" id="setExport">💾 Export my stuff (JSON)</button>' +
+      '<label class="big-btn secondary small" style="display:flex;align-items:center;justify-content:center;cursor:pointer">📂 Import stuff<input type="file" accept="application/json,.json" id="setImport" hidden></label>' +
+      (state.demoActive ? '<button class="big-btn small" id="setDemoOff">🧹 Yeet demo data</button>' : '<button class="big-btn secondary small" id="setDemo">✨ Load demo vibes</button>') +
+      '<button class="big-btn danger small" id="setReset">🗑️ Reset the whole vibe</button>' +
+      '<p class="small-print">🔒 Nicknames only — no kid emails. Photos stay here. Optional fam/class sync shares blurry pins (~150 m) + nicknames when a grown-up plugs in free Firebase (CREW.md). ' +
+      'Map data © OpenStreetMap. Demo mode drops pretend catches nearby — yeet it whenever.</p>');
     $('#setSound').addEventListener('change', function (e) { state.settings.sound = e.target.checked; save(); });
     $('#setSafety').addEventListener('click', function () { closeModal(); showOnboarding(true); });
     $('#setExport').addEventListener('click', exportData);
@@ -1066,7 +1065,7 @@
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
     a.download = 'litter-crusaders-maps-' + G.dayKey(Date.now()) + '.json'; document.body.appendChild(a); a.click();
     setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-    toast('💾 Saved your Litter Crusaders Maps data');
+    toast('💾 Saved your Litter Crusaders Maps stash');
   }
   function importData(e) {
     const f = e.target.files[0]; if (!f) return;
@@ -1075,7 +1074,7 @@
       if (!s.profiles || !s.catches) throw new Error('bad');
       if (!confirm('Replace the data on this device with this file?')) return;
       state = s; save(); location.reload();
-    }).catch(function () { toast('😕 That file doesn\'t look like Litter Crusaders Maps data'); });
+    }).catch(function () { toast('😕 That file doesn\'t look like Litter Crusaders Maps stuff'); });
   }
 
 
@@ -1101,7 +1100,7 @@
     const day = G.dayKey(Date.now());
     const foundToday = (data.seen[day] || []).length;
     $('#ispyBody').innerHTML =
-      '<div class="act-safety">🚘 <b>Grown-ups drive!</b> Kids play from a seatbelt — never while walking in traffic. I Spy does not need your location.</div>' +
+      '<div class="act-safety">🚘 <b>Grown-ups drive.</b> Kids play buckled in — never walking in traffic. I Spy doesn\'t need your location.</div>' +
       '<div class="act-progress"><span>👀 ' + data.finds + ' spotted · streak ' + data.streak + '</span><span>' + foundToday + ' today</span></div>' +
       '<div class="act-hero"><span class="act-emoji">' + item.emoji + '</span>' +
       '<div class="act-prompt">I Spy with my little eye…<br>' + esc(item.prompt) + '</div>' +
@@ -1109,8 +1108,8 @@
       '<label class="act-photo" id="ispyPhotoLabel"><input type="file" accept="image/*" capture="environment" id="ispyPhoto" hidden><span id="ispyPhotoText">📸 Snap it!</span></label>' +
       '<img class="act-preview hidden" id="ispyPreview" alt="Your I Spy photo">' +
       '<div class="act-actions"><button class="big-btn secondary small" id="ispySkip">Skip ➜</button>' +
-      '<button class="big-btn small" id="ispyGot" disabled>Got it! ✨</button></div>' +
-      '<p class="small-print">Photos stay on this device. I Spy finds are not litter catches.</p>';
+      '<button class="big-btn small" id="ispyGot" disabled>Spotted ✨</button></div>' +
+      '<p class="small-print">Photos stay on this phone. I Spy finds aren\'t litter catches — just vibes.</p>';
     let photo = null;
     $('#ispyPhoto').addEventListener('change', function (e) {
       const f = e.target.files && e.target.files[0]; if (!f) return;
@@ -1157,13 +1156,13 @@
     const pr = me(); const room = ensureRoom(pr);
     if (!room.baseline) {
       $('#roomBody').innerHTML =
-        '<div class="act-safety home">🏠 <b>At home mode</b> — after a tidy-up, snap your clean room. Later, spot what changed! Grown-ups can help confirm. Photos stay on this device.</div>' +
+        '<div class="act-safety home">🏠 <b>At-home mode</b> — tidy up, snap the clean room, later spot what changed. Grown-ups can double-check. Photos stay here.</div>' +
         '<div class="act-hero"><span class="act-emoji">✨</span><div class="act-prompt">Snap your clean room</div>' +
         '<div class="act-sub">Make the bed, put toys away, then take a baseline photo.</div></div>' +
         '<label class="act-photo"><input type="file" accept="image/*" capture="environment" id="roomBaseline" hidden><span>📷 Clean-room photo</span></label>' +
         '<img class="act-preview hidden" id="roomBasePrev" alt="Baseline">' +
         '<button class="big-btn" id="roomSaveBase" disabled>Save baseline ✅</button>' +
-        '<p class="small-print">Tip: same angle next time makes differences easier to spot!</p>';
+        '<p class="small-print">Pro tip: same angle next time = easier diffs.</p>';
       let photo = null;
       $('#roomBaseline').addEventListener('change', function (e) {
         const f = e.target.files && e.target.files[0]; if (!f) return;
@@ -1177,7 +1176,7 @@
         room.baseline = photo; room.baselineAt = Date.now(); room.round = null;
         const un = G.evaluate(state, pr.id, Date.now());
         save(); renderRoom(); flushBadges(un);
-        toast('📷 Clean-room baseline saved!');
+        toast('📷 Clean-room baseline locked in!');
       });
       return;
     }
@@ -1215,12 +1214,12 @@
     }
     $$('#diffList .diff-item button').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        if (!round.after) { toast('📸 Snap the room again first!'); return; }
+        if (!round.after) { toast('📸 Snap the room again first, then we compare.'); return; }
         const id = btn.closest('.diff-item').dataset.id;
         if (round.found[id]) return;
         // Grown-up confirm for kid-friendliness
         const diff = round.prompts.find(function (x) { return x.id === id; });
-        if (!confirm('Grown-up helper: does this look different?\n\n' + diff.prompt)) return;
+        if (!confirm('Grown-up check: does this look different?\n\n' + diff.prompt)) return;
         round.found[id] = { ts: Date.now() };
         room.finds = (room.finds || 0) + 1;
         pr.claims = pr.claims || {};
@@ -1250,7 +1249,7 @@
     el.classList.toggle('ispy-mode', kind === 'ispy');
     el.classList.toggle('room-mode', kind === 'room');
     $('#celCreature').innerHTML = '<div class="badge-medal" style="font-size:84px">' + item.emoji + '</div>';
-    $('#celTitle').textContent = kind === 'ispy' ? 'Spotted!' : 'Different!';
+    $('#celTitle').textContent = kind === 'ispy' ? 'Spotted!' : 'Diff spotted!';
     $('#celName').textContent = kind === 'ispy' ? item.prompt : item.prompt;
     $('#celDesc').textContent = kind === 'ispy' ? 'Great eyes on the road trip!' : 'Nice detective work in your room!';
     $('#celDesc').classList.remove('hidden');
@@ -1321,7 +1320,7 @@
         applyPark(fix, 'found', { demo: true });
       }
     } catch (e) { console.warn(e); }
-    toast('✨ Demo data loaded — a Park Pest is almost cleaned up!');
+    toast('✨ Demo vibes loaded — Park Pest is almost toasted!');
   }
   function removeDemo() {
     state.catches = state.catches.filter(function (c) { return !c.demo; });
@@ -1334,7 +1333,7 @@
     });
     state.demoActive = false;
     state.profiles.forEach(function (x) { G.evaluate(state, x.id, Date.now(), { silent: true }); });
-    save(); renderAll(); toast('🧹 Demo data removed');
+    save(); renderAll(); toast('🧹 Demo vibes cleared');
   }
 
   // ---------- onboarding ----------
