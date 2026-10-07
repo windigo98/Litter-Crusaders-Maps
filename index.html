@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Litter Crusaders Maps: Catch 'em all, clean 'em all!</title>
+  <meta name="description" content="A catch-'em-all litter cleanup game for kids and families.">
+  <meta name="theme-color" content="#22c55e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Litter Crusaders Maps">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="vendor/leaflet.css">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Top bar -->
+    <header class="topbar">
+      <button class="player-chip" id="playerChip" aria-label="Switch player">
+        <span class="avatar" id="playerAvatar">🦊</span>
+        <span class="player-meta">
+          <span class="player-name" id="playerName">Explorer</span>
+          <span class="player-level" id="playerLevel">Lv 1</span>
+        </span>
+      </button>
+      <div class="xp-wrap" aria-label="Level progress">
+        <div class="app-brand" id="appBrand">Litter Crusaders Maps</div>
+        <div class="xp-bar"><div class="xp-fill" id="xpFill"></div></div>
+        <div class="xp-text"><span id="pointsText">0</span> pts · 🔥 <span id="streakText">0</span></div>
+      </div>
+      <button class="icon-btn" id="settingsBtn" aria-label="Settings">⚙️</button>
+    </header>
+
+    <!-- Screens -->
+    <main>
+      <section class="screen active" id="screen-map" aria-label="Map">
+        <div id="map"></div>
+        <div class="map-status" id="mapStatus">📍 Finding you…</div>
+        <div class="map-tools">
+          <button class="round-btn" id="locateBtn" aria-label="Go to my location">🎯</button>
+          <button class="round-btn" id="moveMeBtn" aria-label="Tap the map to set my spot">✋</button>
+          <button class="round-btn mode-btn" id="ispyBtn" aria-label="I Spy on the way" title="On the way">🚗</button>
+          <button class="round-btn mode-btn" id="roomBtn" aria-label="What's different at home" title="At home">🏠</button>
+        </div>
+        <div class="park-chip hidden" id="parkChip"></div>
+        <div class="crew-filter hidden" id="crewFilter">
+          <button class="seg active" data-filter="me">Just me</button>
+          <button class="seg" data-filter="crew">Whole crew</button>
+        </div>
+        <button class="boss-peek hidden" id="bossPeek" aria-label="Open boss challenge"></button>
+        <button class="quest-peek hidden" id="questPeek" aria-label="Open quests"></button>
+        <button class="catch-btn" id="catchBtn"><span class="catch-ball">🧤</span><span>Catch!</span></button>
+      </section>
+
+      <section class="screen" id="screen-dex" aria-label="Litter-dex">
+        <div class="screen-head">
+          <h1>📖 Litter-dex</h1>
+          <p class="sub" id="dexSummary">0 / 12 discovered</p>
+        </div>
+        <div class="dex-grid" id="dexGrid"></div>
+      </section>
+
+      <section class="screen" id="screen-quests" aria-label="Quests">
+        <div class="screen-head">
+          <h1>📜 Quests</h1>
+          <p class="sub">Finish quests for bonus points and secret badges!</p>
+        </div>
+        <div id="questsBox"></div>
+      </section>
+
+      <section class="screen" id="screen-badges" aria-label="Badges">
+        <div class="screen-head">
+          <h1>🏅 Badges</h1>
+          <p class="sub" id="badgeSummary">0 earned</p>
+        </div>
+        <div class="stats" id="statsBox"></div>
+        <div id="badgeBox"></div>
+        <h2 class="section-title">Recent catches</h2>
+        <ul class="recent" id="recentList"></ul>
+      </section>
+
+      <section class="screen" id="screen-crew" aria-label="Crew">
+        <div class="screen-head">
+          <h1>👨‍👩‍👧 Crew</h1>
+          <p class="sub">Grown-ups: add each kid so everyone gets their own Litter-dex on this device.</p>
+        </div>
+        <div class="leaderboard" id="leaderboard"></div>
+        <button class="big-btn secondary" id="addKidBtn">➕ Add a crew member</button>
+      </section>
+    </main>
+
+    <!-- Bottom nav -->
+    <nav class="tabbar" aria-label="Main">
+      <button class="tab active" data-screen="map"><span class="tab-ico">🗺️</span><span>Map</span></button>
+      <button class="tab" data-screen="dex"><span class="tab-ico">📖</span><span>Dex</span></button>
+      <button class="tab" data-screen="quests"><span class="tab-ico">📜</span><span>Quests</span><span class="dot hidden" id="questDot"></span></button>
+      <button class="tab" data-screen="badges"><span class="tab-ico">🏅</span><span>Badges</span></button>
+      <button class="tab" data-screen="crew"><span class="tab-ico">👨‍👩‍👧</span><span>Crew</span></button>
+    </nav>
+  </div>
+
+  <!-- Onboarding / safety -->
+  <div class="overlay onboarding hidden" id="onboarding" role="dialog" aria-modal="true" aria-labelledby="obTitle">
+    <div class="ob-card">
+      <div class="ob-hero">
+        <div class="ob-creatures" id="obCreatures"></div>
+        <h1 id="obTitle">Litter Crusaders Maps</h1>
+        <p class="ob-tag">Catch 'em all, clean 'em all!</p>
+      </div>
+      <h2 class="ob-h2">Before we go hunting… 🦸 Safety Squad rules!</h2>
+      <ul class="safety-list">
+        <li><span class="s-ico">🧤</span><span><b>Wear gloves</b> or use a litter grabber.</span></li>
+        <li><span class="s-ico">🧑‍🤝‍🧑</span><span><b>Bring a grown-up helper</b> and stay where they can see you.</span></li>
+        <li><span class="s-ico">🚫</span><span><b>Never touch sharp things</b> like glass, needles or metal. Point and <b>tell a grown-up!</b></span></li>
+        <li><span class="s-ico">🚗</span><span><b>Stay away from roads</b> and water.</span></li>
+        <li><span class="s-ico">🧼</span><span><b>Wash your hands</b> when you're done.</span></li>
+      </ul>
+      <label class="pledge"><input type="checkbox" id="pledgeBox"> <span>I promise to be a safe litter hunter!</span></label>
+      <button class="big-btn" id="startBtn" disabled>Let's go! 🚀</button>
+    </div>
+  </div>
+
+  <!-- Catch sheet -->
+  <div class="overlay sheet-wrap hidden" id="catchSheet" role="dialog" aria-modal="true" aria-labelledby="catchTitle">
+    <div class="sheet">
+      <div class="sheet-grip"></div>
+      <div class="sheet-head">
+        <h2 id="catchTitle">What did you find?</h2>
+        <button class="icon-btn" data-close aria-label="Close">✖️</button>
+      </div>
+      <div class="step" id="step1">
+        <div class="pick-grid" id="pickGrid"></div>
+        <p class="safety-note adult" style="margin-top:14px">🛑 Found a needle, broken glass or something scary? <b>Don't touch it!</b> Tell a grown-up right away.</p>
+      </div>
+      <div class="step hidden" id="step2">
+        <div class="picked" id="pickedBox"></div>
+        <div class="safety-note hidden" id="safetyNote"></div>
+        <div class="count-row">
+          <span class="count-label">How many?</span>
+          <button class="count-btn" id="countMinus" aria-label="Fewer">−</button>
+          <span class="count-num" id="countNum">1</span>
+          <button class="count-btn" id="countPlus" aria-label="More">+</button>
+        </div>
+        <label class="photo-btn" id="photoLabel">
+          <input type="file" accept="image/*" capture="environment" id="photoInput" hidden>
+          <span id="photoText">📸 Snap a photo (optional)</span>
+        </label>
+        <img class="photo-preview hidden" id="photoPreview" alt="Your photo">
+        <div class="step-actions">
+          <button class="big-btn secondary small" id="backBtn">⬅ Back</button>
+          <button class="big-btn" id="confirmCatchBtn">Catch it! ✨</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- I Spy (car ride) -->
+  <div class="overlay sheet-wrap hidden" id="ispySheet" role="dialog" aria-modal="true" aria-labelledby="ispyTitle">
+    <div class="sheet activity-sheet">
+      <div class="sheet-grip"></div>
+      <div class="sheet-head">
+        <h2 id="ispyTitle">🚗 I Spy</h2>
+        <button class="icon-btn" data-close aria-label="Close">✖️</button>
+      </div>
+      <div id="ispyBody"></div>
+    </div>
+  </div>
+
+  <!-- What's different? (home) -->
+  <div class="overlay sheet-wrap hidden" id="roomSheet" role="dialog" aria-modal="true" aria-labelledby="roomTitle">
+    <div class="sheet activity-sheet">
+      <div class="sheet-grip"></div>
+      <div class="sheet-head">
+        <h2 id="roomTitle">🏠 What's different?</h2>
+        <button class="icon-btn" data-close aria-label="Close">✖️</button>
+      </div>
+      <div id="roomBody"></div>
+    </div>
+  </div>
+
+  <!-- Boss challenge sheet -->
+  <div class="overlay sheet-wrap hidden" id="bossSheet" role="dialog" aria-modal="true" aria-labelledby="bossTitle">
+    <div class="sheet boss-sheet">
+      <div class="sheet-grip"></div>
+      <div class="sheet-head">
+        <h2 id="bossTitle">Park Boss!</h2>
+        <button class="icon-btn" data-close aria-label="Close">✖️</button>
+      </div>
+      <div id="bossBody"></div>
+    </div>
+  </div>
+
+  <!-- Celebration -->
+  <div class="overlay celebrate hidden" id="celebrate" aria-live="assertive">
+    <div class="confetti" id="confetti"></div>
+    <div class="cel-card">
+      <div class="cel-burst"></div>
+      <div class="cel-creature" id="celCreature"></div>
+      <div class="cel-title" id="celTitle">Gotcha!</div>
+      <div class="cel-name" id="celName"></div>
+      <div class="cel-desc hidden" id="celDesc"></div>
+      <div class="cel-points" id="celPoints">+10 pts</div>
+      <div class="cel-extras" id="celExtras"></div>
+      <button class="big-btn" id="celOk">Awesome! 🎉</button>
+    </div>
+  </div>
+
+  <!-- Generic modal -->
+  <div class="overlay modal-wrap hidden" id="modal" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div class="modal-head"><h2 id="modalTitle"></h2><button class="icon-btn" data-close aria-label="Close">✖️</button></div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <div class="toast hidden" id="toast"></div>
+
+  <script src="vendor/leaflet.js"></script>
+  <script src="js/creatures.js"></script>
+  <script src="js/bosses.js"></script>
+  <script src="js/parks.js"></script>
+  <script src="js/activities.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
