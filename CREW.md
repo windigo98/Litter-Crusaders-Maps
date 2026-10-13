@@ -10,7 +10,7 @@ Grown-ups / teachers create a shared **family or class crew**. Kids join with a 
 4. On each kid phone: **Join with family or class code** → enter code + nickname + avatar.
 5. Catch litter as usual. Turn the map filter to **Whole crew** to see everyone's blurred pins and the shared leaderboard.
 
-**Leave crew** removes this phone from the shared roster; local Litter-dex data stays on the device. **Add on this phone only** still works for siblings sharing one device without cloud linking.
+**Leave crew** removes this phone from the shared roster; local Litter Log data stays on the device. **Add on this phone only** still works for siblings sharing one device without cloud linking.
 
 ## Cloud sync (cross-phone) — one free signup
 

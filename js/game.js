@@ -138,7 +138,7 @@
     { id: 'first_rare', cat: 'Collection', icon: '💎', name: 'Rare Finder', desc: 'Catch a Rare or Legendary creature', test: function (s) { return s.rare >= 1; } },
     { id: 'mystery', cat: 'Collection', icon: '🦄', name: 'Mystery Solver', desc: 'Catch a Mystery Mimic', test: function (s) { return !!s.perType.mystery; } },
     { id: 'specialist', cat: 'Collection', icon: '🎯', name: 'Specialist', desc: 'Catch 10 of the same creature', test: function (s) { return s.maxType >= 10; }, prog: function (s) { return prog(s.maxType, 10); } },
-    { id: 'dex_complete', cat: 'Collection', icon: '🏆', name: "Clean 'Em All", desc: 'Fill the whole Litter-dex', test: function (s) { return s.distinct >= C.length; }, prog: function (s) { return prog(s.distinct, C.length); } },
+    { id: 'dex_complete', cat: 'Collection', icon: '🏆', name: "Clean 'Em All", desc: 'Fill the whole Litter Log', test: function (s) { return s.distinct >= C.length; }, prog: function (s) { return prog(s.distinct, C.length); } },
     // Streaks & explore
     { id: 'streak_3', cat: 'Streaks & exploring', icon: '🔥', name: 'On Fire', desc: 'Clean up 3 days in a row', test: function (s) { return s.bestStreak >= 3; }, prog: function (s) { return prog(s.bestStreak, 3); } },
     { id: 'streak_7', cat: 'Streaks & exploring', icon: '🌋', name: 'Week Warrior', desc: 'Clean up 7 days in a row', test: function (s) { return s.bestStreak >= 7; }, prog: function (s) { return prog(s.bestStreak, 7); } },
@@ -260,10 +260,10 @@
     { id: 'legend', icon: '🦄', title: 'Legend of the Mystery Mimic', reward: 300, badge: 'story_legend',
       text: 'Word is a shimmering Mystery Mimic is hiding nearby. Litter Legend energy only...',
       chapters: [
-        { t: 'Discover 6 creatures in your Litter-dex', k: 'distinct', n: 6 },
+        { t: 'Discover 6 creatures in your Litter Log', k: 'distinct', n: 6 },
         { t: 'Keep a 3-day clean-up streak', k: 'bestStreak', n: 3 },
         { t: 'Catch a Mystery Mimic', k: 'type', type: 'mystery', n: 1 },
-        { t: 'Fill the whole Litter-dex (12)', k: 'distinct', n: 12 }
+        { t: 'Fill the whole Litter Log (12)', k: 'distinct', n: 12 }
       ] }
   ];
   function chapterValue(ch, s) {
