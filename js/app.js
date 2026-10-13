@@ -555,7 +555,7 @@
     $('#celPoints').textContent = '+' + G.catchPoints(c) + ' pts';
     $('#celPoints').classList.remove('hidden');
     let ex = '', d = 0.5;
-    if (firstOfKind) { ex += extra('📖', 'New Litter-dex entry! <small>' + after.distinct + ' of ' + CREATURES.length + ' discovered</small>', '', d); d += 0.12; }
+    if (firstOfKind) { ex += extra('📖', 'New Litter Log entry! <small>' + after.distinct + ' of ' + CREATURES.length + ' discovered</small>', '', d); d += 0.12; }
     if (after.level.level > before.level.level) { ex += extra('⬆️', 'Level up! Lv ' + after.level.level + ' <small>You\'re now a ' + after.level.title + '</small>', '', d); d += 0.12; }
     unlocked.quests.forEach(function (q) { ex += extra('📜', 'Quest complete! +' + q.reward + ' bonus <small>' + esc(q.title) + '</small>', '', d); d += 0.12; });
     unlocked.stories.forEach(function (s) { ex += extra(s.icon, 'Story finished! +' + s.reward + ' bonus <small>' + esc(s.title) + '</small>', '', d); d += 0.12; });
@@ -1048,7 +1048,8 @@
       (state.demoActive ? '<button class="big-btn small" id="setDemoOff">🧹 Yeet demo data</button>' : '<button class="big-btn secondary small" id="setDemo">✨ Load demo vibes</button>') +
       '<button class="big-btn danger small" id="setReset">🗑️ Reset the whole vibe</button>' +
       '<p class="small-print">🔒 Nicknames only — no kid emails. Photos stay here. Optional fam/class sync shares blurry pins (~150 m) + nicknames when a grown-up plugs in free Firebase (CREW.md). ' +
-      'Map data © OpenStreetMap. Demo mode drops pretend catches nearby — yeet it whenever.</p>');
+      'Map data © OpenStreetMap. Demo mode drops pretend catches nearby — yeet it whenever.</p>' +
+      '<p class="ob-motto">Keep it clean, crusader!</p><p class="copyright">© 2026 WingsCrew. All rights reserved.</p>');
     $('#setSound').addEventListener('change', function (e) { state.settings.sound = e.target.checked; save(); });
     $('#setSafety').addEventListener('click', function () { closeModal(); showOnboarding(true); });
     $('#setExport').addEventListener('click', exportData);

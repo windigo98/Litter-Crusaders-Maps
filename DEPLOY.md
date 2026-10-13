@@ -33,7 +33,7 @@ The tip link in the hub header stays `https://cash.app/$windigo98`. Only `assets
 ```js
   {
     name: "Litter Crusaders Maps",
-    blurb: "Catch litter creatures on the map, fill your Litter-dex, and send park bosses packing.",
+    blurb: "Find litter creatures on the map, fill your Litter Log, and send park bosses packing.",
     url: "https://windigo98.github.io/Littler-Crusaders-Maps/",
     badge: "Play",
   },

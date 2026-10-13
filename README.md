@@ -1,8 +1,10 @@
-# Litter Crusaders Maps 🗺️🧤 — catch 'em all, clean 'em all!
+# Litter Crusaders Maps 🗺️🧤 : Clean 'em all!
+
+*Keep it clean, crusader!*
 
 A Pokémon-Go-style litter clean-up game for kids and families. Every kind of litter is a
 collectible creature (Bottle Blob, Can Crab, Butt Bug, Glass Gremlin…). Pick up litter, log it on
-the map, fill your Litter-dex, finish quests and earn badges.
+the map, fill your Litter Log, finish quests and earn badges.
 
 Mobile-first PWA, plain HTML/CSS/JS, Leaflet + OpenStreetMap. No build step, no backend: all data
 lives in `localStorage` on the device.
@@ -27,7 +29,7 @@ ssh -R 80:localhost:8090 nokey@localhost.run        # prints https://<random>.lh
 - **Catch flow**: big Catch! button → pick creature → how many → optional photo (`capture=environment`, shrunk to ≤640px JPEG) → celebration with confetti, sound, facts.
   - Butt Bug / Mask Moth need a "I used gloves" tick; Glass Gremlin is **grown-ups only** and needs "A grown-up picked this up".
   - Permanent "found a needle? Don't touch, tell a grown-up" note.
-- **Litter-dex**: 12 creatures, rarity stars, silhouettes + hints for undiscovered ones, counts & fun facts.
+- **Litter Log**: 12 creatures, rarity stars, silhouettes + hints for undiscovered ones, counts & fun facts.
 - **Progress**: points, levels with titles, daily streak, 27 badges in 7 groups (getting started, catch counts, collection, streaks & exploring, quests, story, crew), progress bars on locked badges, unlock celebrations.
 - **Quests**: 3 daily + 2 weekly quests that rotate (deterministic per player per day/week) with progress bars and bonus points; 4 chapter-based **story quests** (The Park Rescue, Ocean Friends, The Great Explorer, Legend of the Mystery Mimic) that award points + story badges.
 - **Park auto-detect**: looks up nearby OSM parks/playgrounds/nature reserves via Overpass (~1.2 km), draws a soft green fence, and shows "You're in …!". Bosses prefer the park polygon when you are inside; falls back to ~220 m cells. Caches ~30 min. Golden Gate Park fixture used if Overpass fails (demo/offline).
@@ -55,3 +57,7 @@ ssh -R 80:localhost:8090 nokey@localhost.run        # prints https://<random>.lh
 
 The app starts clean. Demo data is only added via ⚙️ → *Load demo data*, is tagged, and
 *Remove demo data* deletes demo catches/crew and any badges/quest rewards earned while it was on.
+
+## License
+
+© 2026 WingsCrew. All rights reserved. This is proprietary software; the source is published for viewing only. See [LICENSE](LICENSE). Questions or permission requests: dovewingsbusiness@gmail.com.
