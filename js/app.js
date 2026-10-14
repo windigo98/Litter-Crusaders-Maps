@@ -55,21 +55,7 @@
   // ---------- toast / sound ----------
   let toastT;
   function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.remove('hidden'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.add('hidden'); }, 2600); }
-  let actx;
-  function chime(kind) {
-    if (!state.settings.sound) return;
-    try {
-      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
-      const notes = kind === 'badge' ? [659, 784, 988, 1319, 1568] : [523, 659, 784, 1047];
-      notes.forEach(function (f, i) {
-        const o = actx.createOscillator(), g = actx.createGain();
-        o.type = 'triangle'; o.frequency.value = f;
-        const t0 = actx.currentTime + i * 0.09;
-        g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.18, t0 + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.35);
-        o.connect(g).connect(actx.destination); o.start(t0); o.stop(t0 + 0.4);
-      });
-    } catch (e) { /* no audio */ }
-  }
+  function chime(kind) { if (window.LMSound) window.LMSound.play(kind); }
 
   // ---------- header ----------
   function renderHeader() {
@@ -99,7 +85,7 @@
     if (name === 'crew') renderCrew();
     renderHeader();
   }
-  $$('.tab').forEach(function (t) { t.addEventListener('click', function () { show(t.dataset.screen); }); });
+  $$('.tab').forEach(function (t) { t.addEventListener('click', function () { chime('tab'); show(t.dataset.screen); }); });
 
   // ---------- map ----------
   let map, meMarker, pinLayer, pos = null, posSource = 'none', moveMode = false, watchId = null;
@@ -458,6 +444,7 @@
       note.className = 'safety-note';
       note.innerHTML = '🧤 <b>Yucky one!</b> Wear gloves or use a grabber, or ask a grown-up to pick it up.<label><input type="checkbox" id="safeOk"> I used gloves / a grabber</label>';
     } else if (pick.safety === 'adult') {
+      chime('warn');
       note.className = 'safety-note adult';
       note.innerHTML = '⚠️ <b>Grown-ups only.</b> Glass is sharp — kids don\'t touch. Point it out to your grown-up.<label><input type="checkbox" id="safeOk"> Grown-up handled this safely</label>';
     }
@@ -523,6 +510,10 @@
   }
   $('#confirmCatchBtn').addEventListener('click', doCatch);
   $('#catchBtn').addEventListener('click', openCatch);
+  function renderMute() { const b = $('#muteBtn'); if (!b) return; const m = window.LMSound.muted(); b.textContent = m ? '🔇' : '🔊'; b.classList.toggle('on', m); b.setAttribute('aria-label', m ? 'Turn sound on' : 'Mute sound'); }
+  $('#muteBtn').addEventListener('click', function () { window.LMSound.toggleAll(); chime('tap'); });
+  window.LMSound.onChange(renderMute); renderMute();
+  document.addEventListener('click', function (e) { const b = e.target.closest && e.target.closest('button'); if (b && !b.classList.contains('tab') && b.id !== 'muteBtn') chime('tap'); }, true);
   $$('[data-close]').forEach(function (b) { b.addEventListener('click', function () { b.closest('.overlay').classList.add('hidden'); }); });
   $('#catchSheet').addEventListener('click', function (e) { if (e.target.id === 'catchSheet') e.currentTarget.classList.add('hidden'); });
   $('#bossSheet').addEventListener('click', function (e) { if (e.target.id === 'bossSheet') e.currentTarget.classList.add('hidden'); });
@@ -579,7 +570,10 @@
         celQueue.push({ __bossDefeat: true, hit: { inst: d.inst, def: d.def, dmg: 0, defeated: true } });
     });
     unlocked.badges.forEach(function (b) { celQueue.push(b); });
-    el.classList.remove('hidden'); confetti(); chime('catch');
+    el.classList.remove('hidden'); confetti();
+    chime(firstOfKind ? 'newEntry' : 'catch');
+    if (unlocked.quests.length) setTimeout(function () { chime('quest'); }, 650);
+    if (bossHits.some(function (h) { return !h.defeated; })) setTimeout(function () { chime('bossHit'); }, 350);
     if (navigator.vibrate) navigator.vibrate([40, 40, 80]);
   }
 
@@ -600,7 +594,7 @@
     if (contribs.length) ex += extra('👨‍👩‍👧', 'Crew helpers <small>' + esc(contribs.join(' · ')) + '</small>', '', 0.52);
     ex += extra('✨', 'Keep cleaning a spot and park bosses show up. Trust.', 'fact', 0.64);
     $('#celExtras').innerHTML = ex;
-    el.classList.remove('hidden'); confetti(); chime('badge');
+    el.classList.remove('hidden'); confetti(); chime('bossDefeat');
     if (navigator.vibrate) navigator.vibrate([30, 40, 30, 40, 80]);
   }
   function pickOne(a) { return a[Math.floor(Math.random() * a.length)]; }
@@ -910,7 +904,7 @@
         state.settings.mapFilter = 'crew';
         applyRemoteRoom(res.room);
         save();
-        startCrewWatch();
+        startCrewWatch(); chime('crewJoin');
         closeModal();
         renderAll();
         toast('🎉 Crew code ' + res.code + ' — shoot it to fam or class!');
@@ -957,7 +951,7 @@
         state.settings.mapFilter = 'crew';
         applyRemoteRoom(res.room);
         save();
-        startCrewWatch();
+        startCrewWatch(); chime('crewJoin');
         closeModal();
         renderAll();
         toast('🙌 You\'re in ' + (res.room.name || 'crew') + '!');
@@ -1041,7 +1035,8 @@
   // ---------- settings ----------
   $('#settingsBtn').addEventListener('click', function () {
     openModal('⚙️ Settings',
-      '<label class="setting-row">🔊 Sounds <input type="checkbox" id="setSound"' + (state.settings.sound ? ' checked' : '') + '></label>' +
+      '<label class="setting-row">🎵 Music <input type="checkbox" id="setMusic"' + (window.LMSound.prefs().music ? ' checked' : '') + '></label>' +
+      '<label class="setting-row">🔊 Sounds <input type="checkbox" id="setSound"' + (window.LMSound.prefs().sfx ? ' checked' : '') + '></label>' +
       '<button class="big-btn secondary small" id="setSafety">🦸 Safety Squad check</button>' +
       '<button class="big-btn secondary small" id="setExport">💾 Export my stuff (JSON)</button>' +
       '<label class="big-btn secondary small" style="display:flex;align-items:center;justify-content:center;cursor:pointer">📂 Import stuff<input type="file" accept="application/json,.json" id="setImport" hidden></label>' +
@@ -1050,7 +1045,8 @@
       '<p class="small-print">🔒 Nicknames only — no kid emails. Photos stay here. Optional fam/class sync shares blurry pins (~150 m) + nicknames when a grown-up plugs in free Firebase (CREW.md). ' +
       'Map data © OpenStreetMap. Demo mode drops pretend catches nearby — yeet it whenever.</p>' +
       '<p class="ob-motto">Keep it clean, crusader!</p><p class="copyright">© 2026 WingsCrew. All rights reserved.</p>');
-    $('#setSound').addEventListener('change', function (e) { state.settings.sound = e.target.checked; save(); });
+    $('#setSound').addEventListener('change', function (e) { window.LMSound.setSfx(e.target.checked); chime('tap'); });
+    $('#setMusic').addEventListener('change', function (e) { window.LMSound.setMusic(e.target.checked); });
     $('#setSafety').addEventListener('click', function () { closeModal(); showOnboarding(true); });
     $('#setExport').addEventListener('click', exportData);
     $('#setImport').addEventListener('change', importData);
@@ -1260,7 +1256,7 @@
     else ex += extra('🏠', 'Room difference found <small>Room Ranger progress: ' + me().room.finds + '/5</small>', '', 0.4);
     $('#celExtras').innerHTML = ex;
     (unlocked.badges || []).forEach(function (b) { celQueue.push(b); });
-    el.classList.remove('hidden'); confetti(); chime('catch');
+    el.classList.remove('hidden'); confetti(); chime(kind === 'ispy' ? 'ispy' : 'diff');
   }
 
   // ---------- demo data ----------
