@@ -64,3 +64,6 @@ The app starts clean. Demo data is only added via ⚙️ → *Load demo data*, i
 
 ## Litter Dungeon (runner mini game)
 Tap 🏃 on the map. 3-lane endless runner, no GPS needed: swipe left/right to change lane, up to jump, down to slide (arrow keys on desktop). Grab litter bits and coins, hop cones/piles/puddles, slide under tape, run through green critters to tidy them up, then tidy the park boss. Finishing a run awards points, unlocks critters in the Litter Log, the **Dungeon Crusader** badge and the weekly "Finish a Litter Dungeon run" quest. Code: `js/dungeon.js` (canvas, fixed-step loop); tie-ins in `js/game.js` and `LMDungeonHost` in `js/app.js`.
+
+### Coins, Closet and Trophy Room
+Free to earn only (no real money, no ads). Coins come from real cleanups, Litter Dungeon runs and completed quests/badges, with small daily caps per source (`G.COIN_CAP` in `js/game.js`). Spend them in the Closet's Shop (`js/closet.js`) on hair, outfits/runner skins, trails, dungeon perks (Coin Magnet, Bonk Shield) and critter buddies; some gear is prize-only (won from trophies) and a few premium cosmetics cost more. The Trophy Room shows badges, boss wins, dungeon records and trophies. Data lives on each profile as `wallet`, `closet`, `records` and `trophies` (plain JSON, sync-friendly).

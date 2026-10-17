@@ -12,19 +12,11 @@
   const snd = function (n) { if (SND) SND.play(n); };
   const rnd = Math.random, pickOf = function (a) { return a[Math.floor(rnd() * a.length)]; };
 
-  let safeT = 0, root, cv, ctx, bg, W = 0, H = 0, dpr = 1, hy, by, LW, S = null, raf = 0, last = 0, acc = 0, active = false;
-  const sprites = {};
+  let wallet0 = 0, safeT = 0, root, cv, ctx, bg, W = 0, H = 0, dpr = 1, hy, by, LW, S = null, raf = 0, last = 0, acc = 0, active = false;
+  const sprites = window.LMLook.sprites, sprite = window.LMLook.sprite;
   const perf = { ft: new Float32Array(900), wt: new Float32Array(900), n: 0 };
 
-  // ---------- sprites (pre-rasterised from the existing SVG art) ----------
-  function sprite(id, svgStr, size) {
-    if (sprites[id]) return sprites[id];
-    const c = document.createElement('canvas'); c.width = c.height = size; c.ok = false; sprites[id] = c;
-    const im = new Image();
-    im.onload = function () { c.getContext('2d').drawImage(im, 0, 0, size, size); c.ok = true; };
-    im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgStr.replace('<svg ', '<svg width="' + size + '" height="' + size + '" '));
-    return c;
-  }
+  // ---------- sprites (pre-rasterised from the existing SVG art; shared with the Closet) ----------
   const crit = function (id) { return sprite(id, window.lmCreatureSvg(id), 150); };
   const bossSp = function (id) { return sprite('boss:' + id, window.lmBossSvg(id), 240); };
 
@@ -55,10 +47,12 @@
     const ids = POOL.map(function (c) { return c.id; });
     ids.forEach(crit);
     const boss = pickOf(BOSS_IDS); bossSp(boss);
+    const lk = window.LMLook.current(); if (lk.buddy !== 'buddy_none') window.LMLook.item(lk.buddy) && crit(window.LMLook.item(lk.buddy).cr);
     const lead = pickOf(ids.filter(function (i) { return ['bag', 'mystery'].indexOf(i) < 0; }));
     return {
       t: 0, dist: 0, v: 9, mul: 1, lane: 0, px: 0, jh: 0, jv: 0, jbuf: 0, slide: 0, fall: false, inv: 0, shake: 0, lives: MAX_BONKS,
       coins: 0, bits: 0, tidied: [], score: 0, objs: [], next: 38, fin: false, finT: 0, finRow: 0, finBits: 0, finGot: 0, over: false, won: false,
+      look: window.LMLook.current(), shield: false, bonks: 0, lastBonk: 0, clean: 0, trailT: 0,
       boss: boss, lead: lead, fresh: fresh, ids: ids, parts: [], banner: 'Chase it! 🏃', bannerT: 2.2, pop: '', popT: 0, rows: 0, doneT: 0
     };
   }
@@ -108,6 +102,8 @@
   // ---------- simulation ----------
   function bonk() {
     if (S.inv > 0) return;
+    if (S.shield) { S.shield = false; S.inv = 1.0; S.shake = 0.15; snd('dgTidy'); pop('Shield saved you! 🛡️'); return; }
+    S.bonks++; S.clean = Math.max(S.clean, S.dist - S.lastBonk); S.lastBonk = S.dist;
     S.lives--; S.inv = 1.4; S.mul = 0.55; S.shake = 0.3; snd('dgBump'); pop('Oof! 😅');
     if (S.lives <= 0) end(false);
   }
@@ -128,6 +124,8 @@
         s.jv -= (s.fall ? 40 : 30) * dt; s.jh += s.jv * dt;
         if (s.jh <= 0) { s.jh = 0; s.jv = 0; if (s.fall) { s.fall = false; s.slide = 0.55; snd('dgSlide'); } else if (s.jbuf > 0) { s.jbuf = 0; jump(); } }
       }
+      const tr = window.LMLook.item(s.look.trail);
+      if (tr && tr.cols) { s.trailT -= dt; if (s.trailT <= 0) { s.trailT = 0.03; s.parts.push({ x: X(s.px, 1) + (rnd() - 0.5) * LW * 0.3, y: by - s.jh * LW - LW * 0.15, vx: (rnd() - 0.5) * 30, vy: 40 + rnd() * 50, g: 0, life: 0.5, col: tr.cols[(rnd() * tr.cols.length) | 0] }); } }
       if (s.jbuf > 0) s.jbuf -= dt;
       if (s.slide > 0) s.slide -= dt;
       if (s.inv > 0) s.inv -= dt;
@@ -144,7 +142,7 @@
       for (let i = 0; i < s.objs.length; i++) {
         const o = s.objs[i]; if (o.hit) continue;
         const dz = o.z - s.dist; if (dz > 0.7) break; if (dz < -0.7) continue;
-        const t = o.t, reach = (t === 'coin' || t === 'bit' || t === 'crit') ? 0.62 : 0.42; // obstacles are a little forgiving
+        const t = o.t, reach = (t === 'coin' || t === 'bit') ? (S.look.perk === 'perk_magnet' ? 1.55 : 0.62) : t === 'crit' ? 0.62 : 0.42; // obstacles are a little forgiving
         if (Math.abs(o.lane - s.px) > reach) continue;
         if (t === 'coin' || t === 'bit') {
           if (Math.abs(s.jh - o.h) > 0.9) continue;
@@ -164,7 +162,7 @@
     if (s.popT > 0) s.popT -= dt;
     if (s.shake > 0) s.shake -= dt;
     for (let i = s.parts.length - 1; i >= 0; i--) {
-      const p = s.parts[i]; p.life -= dt; p.vy += 500 * dt; p.x += p.vx * dt; p.y += p.vy * dt; if (p.life <= 0) s.parts.splice(i, 1);
+      const p = s.parts[i]; p.life -= dt; p.vy += (p.g === undefined ? 500 : p.g) * dt; p.x += p.vx * dt; p.y += p.vy * dt; if (p.life <= 0) s.parts.splice(i, 1);
     }
   }
 
@@ -203,20 +201,11 @@
     ctx.globalAlpha = 1;
   }
   function drawPlayer() {
-    const u = LW, x = X(S.px, 1), g = by, y = g - S.jh * u, run = S.t * 15, sl = S.slide > 0 || S.fall;
+    const u = LW, x = X(S.px, 1);
     if (S.inv > 0 && ((S.t * 14) | 0) % 2) ctx.globalAlpha = 0.45;
-    ell(x, g, u * 0.32 * (1 - Math.min(S.jh, 1.2) * 0.25), u * 0.08, 'rgba(0,0,0,.25)');
-    ctx.save(); ctx.translate(x, y); if (sl) ctx.scale(1.15, 0.5);
-    const sw = sl || S.jh > 0 ? 0 : Math.sin(run) * u * 0.1;
-    rrect(-u * 0.17, -u * 0.36, u * 0.14, u * 0.36 + sw, u * 0.05, '#2b4a8a'); rrect(u * 0.03, -u * 0.36, u * 0.14, u * 0.36 - sw, u * 0.05, '#2b4a8a');
-    rrect(-u * 0.24, -u * 0.8, u * 0.48, u * 0.46, u * 0.12, '#22c55e');
-    ell(0, -u * 0.58, u * 0.1, u * 0.1, '#fff'); ctx.fillStyle = '#16a34a'; ctx.font = '900 ' + u * 0.15 + 'px system-ui'; ctx.textAlign = 'center'; ctx.fillText('♻', 0, -u * 0.53);
-    ell(-u * 0.3, -u * 0.55 + sw, u * 0.09, u * 0.09, '#ffd23f'); ell(u * 0.3, -u * 0.55 - sw, u * 0.09, u * 0.09, '#ffd23f');
-    ell(0, -u * 0.95, u * 0.2, u * 0.2, '#ffd6a5');
-    ctx.fillStyle = '#15803d'; ctx.beginPath(); ctx.arc(0, -u * 0.99, u * 0.21, Math.PI, 0); ctx.fill(); rrect(-u * 0.05, -u * 1.0, u * 0.3, u * 0.06, 3, '#15803d');
-    ell(-u * 0.07, -u * 0.93, u * 0.025, u * 0.03, '#2b2b3a'); ell(u * 0.07, -u * 0.93, u * 0.025, u * 0.03, '#2b2b3a');
-    ctx.strokeStyle = '#2b2b3a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, -u * 0.88, u * 0.06, 0.2, Math.PI - 0.2); ctx.stroke();
-    ctx.restore(); ctx.globalAlpha = 1;
+    ell(x, by, u * 0.32 * (1 - Math.min(S.jh, 1.2) * 0.25), u * 0.08, 'rgba(0,0,0,.25)');
+    window.LMLook.draw(ctx, x, by - S.jh * u, u, S.look, { t: S.t, sl: S.slide > 0 || S.fall, jump: S.jh > 0, shield: S.shield, bside: S.px > 0.5 ? -1 : 1 });
+    ctx.globalAlpha = 1;
   }
   function label(txt, x, y, size, col) {
     ctx.font = '900 ' + size + 'px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = size * 0.22; ctx.strokeStyle = 'rgba(20,40,30,.75)'; ctx.lineJoin = 'round';
@@ -278,10 +267,12 @@
     // HUD (canvas only: no DOM updates while running)
     const top = 22 + safeT;
     ctx.textAlign = 'left'; ctx.font = '22px system-ui'; for (let h = 0; h < MAX_BONKS; h++) { ctx.globalAlpha = h < s.lives ? 1 : 0.25; ctx.fillText('💚', 14 + h * 30, top + 14); }
-    ctx.globalAlpha = 1; ctx.textAlign = 'left'; ctx.font = '900 18px system-ui'; ctx.fillStyle = '#fff'; ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(20,40,30,.75)';
+    ctx.globalAlpha = 1; ctx.font = '18px system-ui'; ctx.fillText(s.look.perk === 'perk_magnet' ? '🧲' : (s.look.perk === 'perk_shield' ? (s.shield ? '🛡️' : '') : ''), 14 + MAX_BONKS * 30 + 2, top + 12);
+    ctx.textAlign = 'left'; ctx.font = '900 18px system-ui'; ctx.fillStyle = '#fff'; ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(20,40,30,.75)';
     const sc2 = '⭐ ' + s.score + '   ♻ ' + s.bits + '   🪙 ' + s.coins; ctx.strokeText(sc2, 14, top + 44); ctx.fillText(sc2, 14, top + 44);
     const bw = W - 28, pct = s.fin ? (s.finBits ? Math.min(1, s.finGot / Math.max(1, s.finBits)) : 0) : Math.min(1, s.dist / GOAL);
     rrect(14, top + 56, bw, 12, 6, 'rgba(255,255,255,.45)'); rrect(14, top + 56, Math.max(12, bw * pct), 12, 6, s.fin ? '#ff9f1c' : '#22c55e');
+    ctx.textAlign = 'right'; ctx.font = '900 14px system-ui'; ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(20,40,30,.75)'; const wl = '👛 ' + (wallet0 + Math.min(25, Math.floor(s.coins / 4))); ctx.strokeText(wl, W - 14, top + 90); ctx.fillStyle = '#ffe066'; ctx.fillText(wl, W - 14, top + 90);
     label(s.fin ? 'Boss tidiness' : Math.floor(s.dist) + ' / ' + GOAL + ' m', W / 2, top + 90, 14, '#fff');
     if (s.bannerT > 0) label(s.banner, W / 2, H * 0.2, 26, '#ffe066');
     if (s.popT > 0) label(s.pop, W / 2, by - LW * 1.6 - (0.9 - s.popT) * 40, 22, '#bbf7d0');
@@ -330,20 +321,28 @@
 
   // ---------- cards ----------
   const card = function (html) { const c = $('#dgCard'); c.innerHTML = html; c.classList.remove('hidden'); };
+  const links = function () { return '<div class="dg-links"><button class="big-btn secondary small" data-dgl="closet">👕 Closet</button><button class="big-btn secondary small" data-dgl="trophy">🏆 Trophies</button></div>'; };
+  function bindLinks() {
+    $('#dgCard').querySelectorAll('[data-dgl]').forEach(function (b) {
+      b.addEventListener('click', function () { if (b.dataset.dgl === 'closet') window.LMCloset.openCloset('wardrobe'); else window.LMCloset.openTrophies(); });
+    });
+  }
   function showStart() {
     const best = window.LMDungeonHost ? window.LMDungeonHost.best() : 0;
     card('<div class="dg-hero">' + window.lmCreatureSvg(S.lead) + '</div><h2>🏃 Litter Dungeon</h2>' +
       '<p>The ' + window.LM_CREATURES.find(function (c) { return c.id === S.lead; }).name + ' is making a run for it! Chase it through the park, grab litter bits, and tidy up the friendly critters. Nobody gets hurt.</p>' +
       '<div class="dg-howto"><span>⬅️➡️ Swipe: change lane</span><span>⬆️ Swipe: jump</span><span>⬇️ Swipe: slide</span><span>✨ Run through green critters</span></div>' +
       '<p>🦘 Hop over cones, piles &amp; puddles. 🛷 Slide under tape. ' + MAX_BONKS + ' bonks and the run ends.' + (best ? ' Best: ⭐ ' + best : '') + '</p>' +
-      '<button class="big-btn" id="dgGo">Let\'s run! 🏃</button>');
-    $('#dgGo').addEventListener('click', go);
+      '<div class="dg-coinline">👛 ' + window.LMDungeonHost.wallet() + ' coins · earn more by running</div>' +
+      '<button class="big-btn" id="dgGo">Let\'s run! 🏃</button>' + links());
+    $('#dgGo').addEventListener('click', go); bindLinks();
   }
-  function go() { $('#dgCard').classList.add('hidden'); S.t = 0; S.banner = 'Chase it! 🏃'; S.bannerT = 2.2; startLoop(); }
+  function go() { $('#dgCard').classList.add('hidden'); S.t = 0; S.look = window.LMLook.current(); S.shield = S.look.perk === 'perk_shield'; wallet0 = window.LMDungeonHost.wallet(); S.banner = 'Chase it! 🏃'; S.bannerT = 2.2; startLoop(); }
   function end(won) {
     S.over = true; S.won = won; if (won) { S.banner = 'Boss tidied! ✨'; S.bannerT = 9; snd('bossDefeat'); } else snd('warn');
     const pts = Math.min(120, S.score + (won ? 50 : 0));
-    const res = window.LMDungeonHost.finish({ finished: won, pts: pts, tidied: S.tidied.slice(), dist: Math.floor(S.dist) });
+    S.clean = Math.max(S.clean, S.dist - S.lastBonk);
+    const res = window.LMDungeonHost.finish({ finished: won, pts: pts, tidied: S.tidied.slice(), dist: Math.floor(S.dist), coins: S.coins, bonks: S.bonks, clean: Math.floor(S.clean), boss: S.boss });
     S.res = res;
     setTimeout(function () { if (!active) return; showEnd(res, won); }, won ? 1400 : 500);
   }
@@ -351,14 +350,15 @@
     const un = res.unlocked || { quests: [], badges: [] }, bd = window.LM_BOSSES.find(function (b) { return b.id === S.boss; });
     let h = won ? '<div class="dg-hero">' + window.lmBossSvg(S.boss) + '</div><h2>Run complete! 🎉</h2><p>You tidied up the ' + bd.name + ' and the critter is chilling now.</p>'
       : '<div class="dg-hero">' + window.lmCreatureSvg(S.lead) + '</div><h2>Tripped on trash 😅</h2><p>Nice try! Finish the whole run to clear the park boss, win the badge and unlock critters.</p>';
-    h += '<div class="dg-pts">+' + res.pts + ' pts</div><div class="dg-stats"><div><b>' + Math.floor(S.dist) + 'm</b>ran</div><div><b>' + S.bits + '</b>litter bits</div><div><b>' + S.coins + '</b>coins</div>' +
-      '<div><b>' + S.tidied.length + '</b>critters tidied</div><div><b>' + (MAX_BONKS - S.lives) + '</b>bonks</div><div><b>' + S.score + '</b>score</div></div>';
+    h += '<div class="dg-pts">+' + res.pts + ' pts</div><div class="dg-stats four"><div><b>' + Math.floor(S.dist) + 'm</b>ran</div><div><b>' + S.bits + '</b>bits</div><div><b>' + S.coins + '</b>coins</div>' +
+      '<div><b>' + S.tidied.length + '</b>tidied</div></div>';
+    h += '<div class="dg-coinline">🪙 +' + (res.coinsRun + res.coinsGoal) + ' coins · wallet 👛 ' + res.balance + (res.coinCapHit ? '<br><small>Daily coin cap reached. More tomorrow!</small>' : '') + '</div>';
     if (res.newMet.length) h += '<div class="dg-note">📖 New Litter Log entr' + (res.newMet.length > 1 ? 'ies' : 'y') + '!</div><div class="dg-new">' + res.newMet.map(function (i) { return window.lmCreatureSvg(i); }).join('') + '</div>';
     un.quests.forEach(function (q) { h += '<div class="dg-note">📜 Quest complete! +' + q.reward + ' bonus <small>' + q.title + '</small></div>'; });
-    un.badges.forEach(function (b) { h += '<div class="dg-note">' + b.icon + ' Badge unlocked: <b>' + b.name + '</b></div>'; });
+    un.badges.forEach(function (b) { h += '<div class="dg-note">' + b.icon + (b.trophy ? ' Trophy unlocked: <b>' : ' Badge unlocked: <b>') + b.name + '</b></div>'; });
     if (res.capped) h += '<div class="dg-note">😴 Big run day! Bonus points are on pause. Come back tomorrow.</div>';
-    h += '<div class="dg-row"><button class="big-btn secondary small" id="dgDone">Done</button><button class="big-btn small" id="dgAgain">Run again 🏃</button></div>';
-    card(h);
+    h += '<div class="dg-row"><button class="big-btn secondary small" id="dgDone">Done</button><button class="big-btn small" id="dgAgain">Run again 🏃</button></div>' + links();
+    card(h); bindLinks();
     $('#dgDone').addEventListener('click', function () { close(true); });
     $('#dgAgain').addEventListener('click', function () { reset(); });
   }

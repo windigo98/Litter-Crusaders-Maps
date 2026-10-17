@@ -38,6 +38,29 @@
   function pick(r, arr) { return arr[Math.floor(r() * arr.length)]; }
   function shuffle(r, arr) { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
 
+  // ---------- coins, closet, records (all plain JSON on the profile, so they can sync later) ----------
+  // Free to earn only. Per-day caps per source keep coin farming in check.
+  const COIN_CAP = { run: 120, clean: 30, goal: 80 };
+  function ensureProfile(p) {
+    if (!p.wallet) p.wallet = { coins: 0, earned: 0, spent: 0, day: {} };
+    if (!p.closet) p.closet = { owned: {}, equipped: {} };
+    if (!p.records) p.records = { bestDist: 0, bestCoins: 0, longestClean: 0, noBonkRuns: 0, tidiedTotal: 0, bosses: {} };
+    if (!p.trophies) p.trophies = {};
+    return p;
+  }
+  function earnCoins(p, n, src, now) {
+    ensureProfile(p); now = now || Date.now();
+    const k = dayKey(now), w = p.wallet;
+    if (w.day.k !== k) w.day = { k: k };
+    const used = w.day[src] || 0, got = Math.max(0, Math.min(Math.floor(n), (COIN_CAP[src] || 0) - used));
+    w.day[src] = used + got; w.coins += got; w.earned += got;
+    return got;
+  }
+  function spendCoins(p, n) {
+    ensureProfile(p); if (n < 0 || p.wallet.coins < n) return false;
+    p.wallet.coins -= n; p.wallet.spent += n; return true;
+  }
+
   // ---------- points & levels ----------
   const TITLES = ['Litter Spotter', 'Trash Tracker', 'Wrapper Wrangler', 'Bin Buddy', 'Park Protector', 'Street Star', 'Eco Explorer', 'Recycling Ranger', 'Earth Hero', 'Planet Champion'];
   function levelThreshold(L) { return 25 * (L - 1) * L / 2; }
@@ -84,7 +107,7 @@
     const points = pts + bonus;
     let maxDay = 0; Object.keys(perDay).forEach(function (k) { maxDay = Math.max(maxDay, perDay[k]); });
     let maxType = 0; Object.keys(perType).forEach(function (k) { maxType = Math.max(maxType, perType[k]); });
-    return {
+    const out = {
       items: items, events: list.length, perType: perType, distinct: Object.keys(perType).length,
       catchPts: pts, bonus: bonus, points: points, level: levelInfo(points),
       days: days.size, streak: st.current, bestStreak: st.best, maxDay: maxDay, maxType: maxType,
@@ -97,10 +120,14 @@
       ispyFinds: profile && profile.ispy ? (profile.ispy.finds || 0) : 0,
       ispyBestStreak: profile && profile.ispy ? (profile.ispy.bestStreak || 0) : 0,
       roomFinds: profile && profile.room ? (profile.room.finds || 0) : 0,
+      goals: 0,
+      records: profile ? ensureProfile(profile).records : {},
       dungeonRuns: profile && profile.dungeon ? (profile.dungeon.runs || 0) : 0,
       dungeonMet: profile && profile.dungeon ? (profile.dungeon.met || {}) : {},
       list: list
     };
+    out.goals = out.questsDone + out.storiesDone;
+    return out;
   }
   function hasDailyTriple(profile) {
     const per = {};
@@ -176,6 +203,19 @@
         || !!(x.profile.badges || {})[b.id];
     };
   });
+
+  // ---------- trophies (Trophy Room). Unlocks celebrate like badges; some hand out prize-only cosmetics. ----------
+  const TROPHIES = [
+    { id: 'dg_first', cat: 'Litter Dungeon', icon: '🏁', name: 'First Finish', desc: 'Finish a Litter Dungeon run', prize: 'buddy_cap', test: function (s) { return s.dungeonRuns >= 1; } },
+    { id: 'dg_five', cat: 'Litter Dungeon', icon: '🥇', name: 'Dungeon Regular', desc: 'Finish 5 Litter Dungeon runs', prize: 'hair_crown', test: function (s) { return s.dungeonRuns >= 5; } },
+    { id: 'dg_clean', cat: 'Litter Dungeon', icon: '🛡️', name: 'Spotless Run', desc: 'Finish a run with zero bonks', prize: 'trail_gold', test: function (s) { return s.records.noBonkRuns >= 1; } },
+    { id: 'dg_boss3', cat: 'Litter Dungeon', icon: '🧹', name: 'Boss Tidier', desc: 'Tidy up 3 different park bosses in the dungeon', prize: 'outfit_bosscape', test: function (s) { return Object.keys(s.records.bosses || {}).length >= 3; } },
+    { id: 'dg_coins', cat: 'Litter Dungeon', icon: '🪙', name: 'Coin Collector', desc: 'Grab 80 coins in a single run', test: function (s) { return s.records.bestCoins >= 80; } },
+    { id: 'dg_tidy', cat: 'Litter Dungeon', icon: '✨', name: 'Critter Tidier', desc: 'Tidy up 10 critters in the dungeon', test: function (s) { return s.records.tidiedTotal >= 10; } },
+    { id: 'goals_5', cat: 'Quest milestones', icon: '📜', name: 'Goal Getter', desc: 'Complete 5 quests or story quests', test: function (s) { return s.goals >= 5; } },
+    { id: 'goals_15', cat: 'Quest milestones', icon: '🗝️', name: 'Goal Crusher', desc: 'Complete 15 quests or story quests', test: function (s) { return s.goals >= 15; } },
+    { id: 'goals_25', cat: 'Quest milestones', icon: '🌟', name: 'Goal Machine', desc: 'Complete 25 quests or story quests', prize: 'outfit_star', test: function (s) { return s.goals >= 25; } }
+  ];
 
   // ---------- quests ----------
   const QUEST_TYPES = ['bottle', 'can', 'wrapper', 'paper', 'cup', 'cap']; // safe for kids to target
@@ -476,7 +516,9 @@
     const profile = state.profiles.find(function (p) { return p.id === pid; });
     if (!profile) return { quests: [], stories: [], badges: [], bossDefeats: [] };
     profile.claims = profile.claims || {}; profile.badges = profile.badges || {};
-    const out = { quests: [], stories: [], badges: [], bossDefeats: [] };
+    const out = { quests: [], stories: [], badges: [], bossDefeats: [], coins: 0 };
+    ensureProfile(profile);
+    const gift = function (n) { if (!opts.silent) out.coins += earnCoins(profile, n, 'goal', now); };
     const mine = catchesFor(state, pid);
     const demo = !!state.demoActive;
     // quests (current period only)
@@ -484,7 +526,7 @@
       questsFor(per, profile, now).forEach(function (q) {
         if (!profile.claims[q.key] && questProgress(q, mine, profile) >= q.goal) {
           profile.claims[q.key] = { ts: now, pts: q.reward, title: q.title, demo: demo };
-          out.quests.push(q);
+          out.quests.push(q); gift(10);
         }
       });
     });
@@ -494,7 +536,7 @@
       const key = 's:' + st.id;
       if (!profile.claims[key] && storyStatus(st, s).complete) {
         profile.claims[key] = { ts: now, pts: st.reward, title: st.title, demo: demo };
-        out.stories.push(st);
+        out.stories.push(st); gift(40);
       }
     });
     // Park bosses: spawn from busy areas; settle any defeats for this player
@@ -510,13 +552,22 @@
     BADGES.forEach(function (b) {
       if (!profile.badges[b.id] && b.test(s, ctx)) {
         profile.badges[b.id] = { ts: now, demo: demo, seen: !!opts.silent };
-        out.badges.push(b);
+        out.badges.push(b); gift(5);
+      }
+    });
+    s = stats(state, pid, now);
+    TROPHIES.forEach(function (t) {
+      if (!profile.trophies[t.id] && t.test(s, ctx)) {
+        profile.trophies[t.id] = { ts: now, seen: !!opts.silent };
+        if (t.prize) profile.closet.owned[t.prize] = now;
+        out.badges.push({ id: t.id, icon: t.icon, name: t.name, desc: t.desc, trophy: true, prize: t.prize }); gift(10);
       }
     });
     return out;
   }
 
   window.LMGame = {
+    TROPHIES: TROPHIES, ensureProfile: ensureProfile, earnCoins: earnCoins, spendCoins: spendCoins, COIN_CAP: COIN_CAP,
     byId: byId, COMMONS: COMMONS, BADGES: BADGES, STORIES: STORIES, TITLES: TITLES,
     BOSSES: BOSSES, BOSS_BY_ID: BOSS_BY_ID, BOSS_HIT_M: BOSS_HIT_M,
     dayKey: dayKey, startOfDay: startOfDay, startOfWeek: startOfWeek, addDays: addDays, distM: distM, spotsOf: spotsOf,
