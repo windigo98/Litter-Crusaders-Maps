@@ -413,7 +413,7 @@
     const qs = G.questsFor('d', p, Date.now());
     const q = qs.find(function (x) { return !p.claims[x.key]; });
     if (!q || !state.settings.onboarded) { el.classList.add('hidden'); return; }
-    const v = G.questProgress(q, mine);
+    const v = G.questProgress(q, mine, p);
     el.innerHTML = '<span class="qp-ico">' + q.icon + '</span><span class="qp-text"><small>Today\'s quest · +' + q.reward + ' pts</small>' + esc(q.title) +
       '<div class="qbar"><div style="width:' + Math.round(100 * v / q.goal) + '%"></div></div></span><b>' + v + '/' + q.goal + '</b>';
     el.classList.remove('hidden');
@@ -634,20 +634,21 @@
     const s = myStats();
     $('#dexSummary').innerHTML = s.distinct + ' / ' + CREATURES.length + ' discovered · ' + s.items + ' litter caught<div class="dex-progress"><div style="width:' + Math.round(100 * s.distinct / CREATURES.length) + '%"></div></div>';
     $('#dexGrid').innerHTML = CREATURES.map(function (c, i) {
-      const n = s.perType[c.id] || 0, R = RARITY[c.rarity];
-      return '<button class="dex-card r-' + c.rarity + (n ? '' : ' locked') + '" data-id="' + c.id + '"><span class="num">#' + String(i + 1).padStart(3, '0') + '</span>' +
-        (n ? '<span class="cnt">×' + n + '</span>' : '') + svg(c.id) + '<div class="d-name">' + (n ? esc(c.name) : '???') + '</div>' +
+      const n = s.perType[c.id] || 0, met = !n && s.dungeonMet[c.id], R = RARITY[c.rarity];
+      return '<button class="dex-card r-' + c.rarity + (n || met ? '' : ' locked') + '" data-id="' + c.id + '"><span class="num">#' + String(i + 1).padStart(3, '0') + '</span>' +
+        (n ? '<span class="cnt">×' + n + '</span>' : met ? '<span class="cnt">🏃</span>' : '') + svg(c.id) + '<div class="d-name">' + (n || met ? esc(c.name) : '???') + '</div>' +
         '<div class="stars" style="color:' + R.color + '">' + '★'.repeat(R.stars) + '</div></button>';
     }).join('');
     $$('#dexGrid .dex-card').forEach(function (b) { b.addEventListener('click', function () { dexDetail(b.dataset.id); }); });
   }
   function dexDetail(id) {
-    const c = G.byId[id], s = myStats(), n = s.perType[id] || 0, R = RARITY[c.rarity];
+    const c = G.byId[id], s = myStats(), n = s.perType[id] || 0, met = !n && s.dungeonMet[id], show = n || met, R = RARITY[c.rarity];
     const safety = c.safety === 'adult' ? '<p class="safety-note adult">⚠️ Grown-ups only — kids point it out, don\'t touch.</p>' : c.safety === 'gloves' ? '<p class="safety-note">🧤 Gloves on, or hand it to a grown-up.</p>' : '';
-    openModal(n ? c.name : 'Mystery creature',
-      '<div class="dex-big' + (n ? '' : ' locked') + '">' + (n ? svg(id) : '<span style="display:inline-block;filter:brightness(0) opacity(.22)">' + svg(id) + '</span>') +
+    openModal(show ? c.name : 'Mystery creature',
+      '<div class="dex-big' + (show ? '' : ' locked') + '">' + (show ? svg(id) : '<span style="display:inline-block;filter:brightness(0) opacity(.22)">' + svg(id) + '</span>') +
       '<div style="font-weight:900;color:' + R.color + '">' + '★'.repeat(R.stars) + ' ' + R.label + ' · ' + c.points + ' pts</div></div>' +
       (n ? '<p>🗑️ Real-life litter: <b>' + esc(c.item) + '</b><br>🎒 You\'ve caught <b>' + n + '</b>.</p><p>💡 ' + esc(c.fact) + '</p>'
+         : met ? '<p>🏃 You met this one in the <b>Litter Dungeon</b>! Spot the real thing (<b>' + esc(c.item.toLowerCase()) + '</b>) to catch it for keeps.</p><p>💡 ' + esc(c.fact) + '</p>'
          : '<p>🔍 Hint: look for a <b>' + esc(c.item.toLowerCase()) + '</b>.</p>') + safety);
   }
 
@@ -659,7 +660,7 @@
     return Math.max(1, Math.floor(ms / 60000)) + 'm left';
   }
   function questCard(q, mine, claims) {
-    const v = G.questProgress(q, mine), done = !!claims[q.key] || v >= q.goal;
+    const v = G.questProgress(q, mine, me()), done = !!claims[q.key] || v >= q.goal;
     return '<div class="quest ' + (q.period === 'd' ? 'daily' : 'weekly') + (done ? ' done' : '') + '"><div class="q-ico">' + (done ? '✅' : q.icon) + '</div><div class="q-body">' +
       '<div class="q-title">' + esc(q.title) + '</div><div class="qbar' + (done ? ' done' : '') + '"><div style="width:' + Math.round(100 * v / q.goal) + '%"></div></div>' +
       '<div class="q-sub"><span>' + (done ? 'Done! 🎉' : v + ' / ' + q.goal) + '</span><span class="q-reward">' + (done ? '+' + q.reward + ' earned' : '🎁 +' + q.reward + ' pts') + '</span></div></div></div>';
@@ -1258,6 +1259,36 @@
     (unlocked.badges || []).forEach(function (b) { celQueue.push(b); });
     el.classList.remove('hidden'); confetti(); chime(kind === 'ispy' ? 'ispy' : 'diff');
   }
+
+  // ---------- Litter Dungeon (runner) ----------
+  function ensureDungeon(pr) { if (!pr.dungeon) pr.dungeon = { runs: 0, best: 0, met: {}, log: [] }; return pr.dungeon; }
+  window.LMDungeonHost = {
+    // creature ids this player already knows (met in the dungeon or really caught)
+    known: function () { const d = ensureDungeon(me()), k = {}; Object.keys(d.met).forEach(function (i) { k[i] = 1; }); Object.keys(myStats().perType).forEach(function (i) { k[i] = 1; }); return k; },
+    best: function () { return ensureDungeon(me()).best; },
+    // Award a finished (or tripped-up) run: points, Litter Log unlocks, badge + quest checks.
+    finish: function (r) {
+      const pr = me(), d = ensureDungeon(pr), now = Date.now(), today = G.dayKey(now);
+      let pts = r.pts, capped = false;
+      if (r.finished) {
+        const doneToday = d.log.filter(function (t) { return G.dayKey(t) === today; }).length;
+        if (doneToday >= 3) { pts = Math.min(pts, 10); capped = true; }
+      } else pts = Math.min(pts, 15);
+      const newMet = [];
+      if (r.finished) {
+        d.runs++; d.log.push(now);
+        r.tidied.forEach(function (id) { if (!d.met[id] && !myStats().perType[id]) newMet.push(id); d.met[id] = now; });
+      }
+      d.best = Math.max(d.best, r.pts);
+      pr.claims = pr.claims || {};
+      pr.claims['x:dg:' + now] = { ts: now, pts: pts, title: r.finished ? 'Litter Dungeon run' : 'Litter Dungeon try', demo: !!state.demoActive };
+      const un = G.evaluate(state, pr.id, now);
+      save(); renderHeader();
+      return { pts: pts, capped: capped, newMet: newMet, unlocked: un };
+    },
+    done: function (unlocked) { renderAll(); if (unlocked) flushBadges(unlocked); }
+  };
+  $('#dungeonBtn').addEventListener('click', function () { window.LMDungeon.open(); });
 
   // ---------- demo data ----------
   function loadDemo() {

@@ -61,3 +61,6 @@ The app starts clean. Demo data is only added via ⚙️ → *Load demo data*, i
 ## License
 
 © 2026 WingsCrew. All rights reserved. This is proprietary software; the source is published for viewing only. See [LICENSE](LICENSE). Questions or permission requests: dovewingsbusiness@gmail.com.
+
+## Litter Dungeon (runner mini game)
+Tap 🏃 on the map. 3-lane endless runner, no GPS needed: swipe left/right to change lane, up to jump, down to slide (arrow keys on desktop). Grab litter bits and coins, hop cones/piles/puddles, slide under tape, run through green critters to tidy them up, then tidy the park boss. Finishing a run awards points, unlocks critters in the Litter Log, the **Dungeon Crusader** badge and the weekly "Finish a Litter Dungeon run" quest. Code: `js/dungeon.js` (canvas, fixed-step loop); tie-ins in `js/game.js` and `LMDungeonHost` in `js/app.js`.

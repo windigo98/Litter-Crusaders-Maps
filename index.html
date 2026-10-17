@@ -44,6 +44,7 @@
           <button class="round-btn" id="moveMeBtn" aria-label="Tap the map to set my spot">✋</button>
           <button class="round-btn mode-btn" id="ispyBtn" aria-label="I Spy on the way" title="On the way">🚗</button>
           <button class="round-btn mode-btn" id="roomBtn" aria-label="What's different at home" title="At home">🏠</button>
+          <button class="round-btn mode-btn" id="dungeonBtn" aria-label="Litter Dungeon run" title="Litter Dungeon">🏃</button>
           <button class="round-btn" id="muteBtn" aria-label="Mute sound" title="Sound">🔊</button>
         </div>
         <div class="park-chip hidden" id="parkChip"></div>
@@ -191,6 +192,14 @@
     </div>
   </div>
 
+  <!-- Litter Dungeon (endless-runner mini game) -->
+  <div class="overlay dg-wrap hidden" id="dungeon" role="dialog" aria-modal="true" aria-label="Litter Dungeon">
+    <canvas id="dgCanvas"></canvas>
+    <button class="dg-btn dg-close" id="dgClose" aria-label="Exit Litter Dungeon">✖️</button>
+    <button class="dg-btn dg-mute" id="dgMute" aria-label="Mute sound">🔊</button>
+    <div class="dg-card hidden" id="dgCard"></div>
+  </div>
+
   <!-- Boss challenge sheet -->
   <div class="overlay sheet-wrap hidden" id="bossSheet" role="dialog" aria-modal="true" aria-labelledby="bossTitle">
     <div class="sheet boss-sheet">
@@ -235,6 +244,7 @@
   <script src="js/activities.js"></script>
   <script src="js/sound.js"></script>
   <script src="js/game.js"></script>
+  <script src="js/dungeon.js"></script>
   <script src="js/firebase-config.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>

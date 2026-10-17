@@ -97,6 +97,8 @@
       ispyFinds: profile && profile.ispy ? (profile.ispy.finds || 0) : 0,
       ispyBestStreak: profile && profile.ispy ? (profile.ispy.bestStreak || 0) : 0,
       roomFinds: profile && profile.room ? (profile.room.finds || 0) : 0,
+      dungeonRuns: profile && profile.dungeon ? (profile.dungeon.runs || 0) : 0,
+      dungeonMet: profile && profile.dungeon ? (profile.dungeon.met || {}) : {},
       list: list
     };
   }
@@ -127,6 +129,7 @@
     { id: 'ispy_streak', cat: 'On the way', icon: '👀', name: 'Eagle Eyes', desc: 'Find 3 I Spy things in a row without skipping', test: function (s) { return s.ispyBestStreak >= 3; }, prog: function (s) { return prog(s.ispyBestStreak, 3); } },
     { id: 'room_ranger', cat: 'At home', icon: '🏠', name: 'Room Ranger', desc: 'Spot 5 differences after a room tidy-up', test: function (s) { return s.roomFinds >= 5; }, prog: function (s) { return prog(s.roomFinds, 5); } },
     { id: 'room_baseline', cat: 'At home', icon: '📷', name: 'Clean-Room Capper', desc: 'Snap a clean-room baseline photo', test: function (s, x) { return !!(x.profile.room && x.profile.room.baseline); } },
+    { id: 'dungeon_crusader', cat: 'At home', icon: '🏃', name: 'Dungeon Crusader', desc: 'Finish a Litter Dungeon run', test: function (s) { return s.dungeonRuns >= 1; }, prog: function (s) { return prog(s.dungeonRuns, 1); } },
     // Catch counts
     { id: 'catch_10', cat: 'Catch counts', icon: '🔟', name: 'Litter Cadet', desc: 'Catch 10 pieces of litter', test: function (s) { return s.items >= 10; }, prog: function (s) { return prog(s.items, 10); } },
     { id: 'catch_50', cat: 'Catch counts', icon: '⭐', name: 'Clean Machine', desc: 'Catch 50 pieces of litter', test: function (s) { return s.items >= 50; }, prog: function (s) { return prog(s.items, 50); } },
@@ -202,18 +205,21 @@
     const r = rng(period + pk + profile.id);
     const pool = period === 'd' ? DAILY_POOL : WEEKLY_POOL;
     const howMany = period === 'd' ? 3 : 2;
-    return shuffle(r, pool.map(function (g, i) { return i; })).slice(0, howMany).map(function (gi, idx) {
-      const q = pool[gi](r);
+    const picks = shuffle(r, pool.map(function (g, i) { return i; })).slice(0, howMany);
+    if (period === 'w') picks.push(-1); // always-on weekly: finish a Litter Dungeon run
+    return picks.map(function (gi, idx) {
+      const q = gi < 0 ? { kind: 'dungeon', goal: 1, icon: '🏃', title: 'Finish a Litter Dungeon run', reward: 50 } : pool[gi](r);
       q.period = period; q.start = start; q.end = end;
       q.key = period + ':' + pk + ':' + idx + ':' + q.kind + (q.type ? '-' + q.type : '') + '-' + q.goal;
       return q;
     });
   }
 
-  function questProgress(q, allMine) {
+  function questProgress(q, allMine, profile) {
     const inP = allMine.filter(function (c) { return c.ts >= q.start && c.ts < q.end; });
     let v = 0;
     switch (q.kind) {
+      case 'dungeon': v = ((profile && profile.dungeon && profile.dungeon.log) || []).filter(function (t) { return t >= q.start && t < q.end; }).length; break;
       case 'items': inP.forEach(function (c) { v += c.count || 1; }); break;
       case 'type': inP.forEach(function (c) { if (c.type === q.type) v += c.count || 1; }); break;
       case 'distinct': v = new Set(inP.map(function (c) { return c.type; })).size; break;
@@ -476,7 +482,7 @@
     // quests (current period only)
     ['d', 'w'].forEach(function (per) {
       questsFor(per, profile, now).forEach(function (q) {
-        if (!profile.claims[q.key] && questProgress(q, mine) >= q.goal) {
+        if (!profile.claims[q.key] && questProgress(q, mine, profile) >= q.goal) {
           profile.claims[q.key] = { ts: now, pts: q.reward, title: q.title, demo: demo };
           out.quests.push(q);
         }
