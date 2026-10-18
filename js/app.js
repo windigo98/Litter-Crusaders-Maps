@@ -413,7 +413,7 @@
     const qs = G.questsFor('d', p, Date.now());
     const q = qs.find(function (x) { return !p.claims[x.key]; });
     if (!q || !state.settings.onboarded) { el.classList.add('hidden'); return; }
-    const v = G.questProgress(q, mine);
+    const v = G.questProgress(q, mine, p);
     el.innerHTML = '<span class="qp-ico">' + q.icon + '</span><span class="qp-text"><small>Today\'s quest · +' + q.reward + ' pts</small>' + esc(q.title) +
       '<div class="qbar"><div style="width:' + Math.round(100 * v / q.goal) + '%"></div></div></span><b>' + v + '/' + q.goal + '</b>';
     el.classList.remove('hidden');
@@ -480,6 +480,7 @@
   }
   function jitter(p) { const r = 5 / 111320; return { lat: p.lat + (Math.random() - 0.5) * r, lng: p.lng + (Math.random() - 0.5) * r / Math.cos(p.lat * Math.PI / 180) }; }
 
+  let lastCleanCoins = 0;
   function doCatch() {
     if (!pick) return;
     const p = me();
@@ -492,6 +493,7 @@
     state.catches.push(c);
     if (!save() && c.photo) { delete c.photo; save(); }
     // Boss tick: spawn from busy areas, then apply this catch as clean-up damage
+    lastCleanCoins = G.earnCoins(p, Math.min(count, 5) * 2, 'clean', Date.now());
     const spawned = G.spawnBosses(state, Date.now());
     const bossHits = G.applyCatchToBosses(state, c);
     const unlocked = G.evaluate(state, p.id, Date.now());
@@ -558,6 +560,7 @@
       if (h.defeated) return; // defeat gets its own celebration
       ex += extra(h.def.emoji, 'Mess pile −' + h.dmg + '! <small>' + esc(h.def.name) + ' · ' + h.inst.hp + ' left</small>', '', d); d += 0.12;
     });
+    if (lastCleanCoins + (unlocked.coins || 0) > 0) { ex += extra('🪙', '+' + (lastCleanCoins + (unlocked.coins || 0)) + ' coins <small>Spend them in the Closet</small>', '', d); d += 0.12; }
     if (after.streak > before.streak && after.streak > 1) { ex += extra('🔥', after.streak + '-day streak! <small>Come back tomorrow to keep it going</small>', '', d); d += 0.12; }
     if (cr.safety) ex += extra(cr.safety === 'adult' ? '⚠️' : '🧼', cr.safety === 'adult' ? 'Thanks, grown-up! Wrap sharp glass before binning it.' : 'Great job using gloves! Wash hands when you\'re done.', 'fact', d);
     else ex += extra('💡', esc(cr.fact), 'fact', d);
@@ -601,14 +604,17 @@
   function celebrateBadge(b) {
     const el = $('#celebrate'); el.classList.remove('boss-mode', 'ispy-mode', 'room-mode'); el.classList.add('badge-mode');
     $('#celCreature').innerHTML = '<div class="badge-medal">' + b.icon + '</div>';
-    $('#celTitle').textContent = 'Badge unlocked, let\'s go!';
+    $('#celTitle').textContent = b.trophy ? 'Trophy unlocked!' : 'Badge unlocked, let\'s go!';
     $('#celName').textContent = b.name;
     $('#celDesc').textContent = b.desc; $('#celDesc').classList.remove('hidden');
     $('#celPoints').classList.add('hidden');
     const left = G.BADGES.length - Object.keys(me().badges).length;
-    $('#celExtras').innerHTML = extra('🏅', 'Find it on your Badges page <small>' + (left > 0 ? left + ' more badges to discover!' : 'You collected EVERY badge!') + '</small>', '', 0.4);
-    const rec = me().badges[b.id]; if (rec) { rec.seen = true; save(); }
-    el.classList.remove('hidden'); confetti(); chime('badge');
+    if (b.trophy) {
+      const pz = b.prize && window.LMCloset.item(b.prize);
+      $('#celExtras').innerHTML = extra('🏆', 'It\'s on your shelf in the Trophy Room', '', 0.4) + (pz ? extra(pz.icon, 'Prize unlocked: <b>' + esc(pz.name) + '</b> <small>Equip it in the Closet</small>', '', 0.52) : '');
+    } else $('#celExtras').innerHTML = extra('🏅', 'Find it on your Badges page <small>' + (left > 0 ? left + ' more badges to discover!' : 'You collected EVERY badge!') + '</small>', '', 0.4);
+    const rec = (b.trophy ? me().trophies : me().badges)[b.id]; if (rec) { rec.seen = true; save(); }
+    el.classList.remove('hidden'); confetti(); chime(b.trophy ? 'trophy' : 'badge');
   }
   $('#celOk').addEventListener('click', function () {
     if (celQueue.length) {
@@ -634,20 +640,21 @@
     const s = myStats();
     $('#dexSummary').innerHTML = s.distinct + ' / ' + CREATURES.length + ' discovered · ' + s.items + ' litter caught<div class="dex-progress"><div style="width:' + Math.round(100 * s.distinct / CREATURES.length) + '%"></div></div>';
     $('#dexGrid').innerHTML = CREATURES.map(function (c, i) {
-      const n = s.perType[c.id] || 0, R = RARITY[c.rarity];
-      return '<button class="dex-card r-' + c.rarity + (n ? '' : ' locked') + '" data-id="' + c.id + '"><span class="num">#' + String(i + 1).padStart(3, '0') + '</span>' +
-        (n ? '<span class="cnt">×' + n + '</span>' : '') + svg(c.id) + '<div class="d-name">' + (n ? esc(c.name) : '???') + '</div>' +
+      const n = s.perType[c.id] || 0, met = !n && s.dungeonMet[c.id], R = RARITY[c.rarity];
+      return '<button class="dex-card r-' + c.rarity + (n || met ? '' : ' locked') + '" data-id="' + c.id + '"><span class="num">#' + String(i + 1).padStart(3, '0') + '</span>' +
+        (n ? '<span class="cnt">×' + n + '</span>' : met ? '<span class="cnt">🏃</span>' : '') + svg(c.id) + '<div class="d-name">' + (n || met ? esc(c.name) : '???') + '</div>' +
         '<div class="stars" style="color:' + R.color + '">' + '★'.repeat(R.stars) + '</div></button>';
     }).join('');
     $$('#dexGrid .dex-card').forEach(function (b) { b.addEventListener('click', function () { dexDetail(b.dataset.id); }); });
   }
   function dexDetail(id) {
-    const c = G.byId[id], s = myStats(), n = s.perType[id] || 0, R = RARITY[c.rarity];
+    const c = G.byId[id], s = myStats(), n = s.perType[id] || 0, met = !n && s.dungeonMet[id], show = n || met, R = RARITY[c.rarity];
     const safety = c.safety === 'adult' ? '<p class="safety-note adult">⚠️ Grown-ups only — kids point it out, don\'t touch.</p>' : c.safety === 'gloves' ? '<p class="safety-note">🧤 Gloves on, or hand it to a grown-up.</p>' : '';
-    openModal(n ? c.name : 'Mystery creature',
-      '<div class="dex-big' + (n ? '' : ' locked') + '">' + (n ? svg(id) : '<span style="display:inline-block;filter:brightness(0) opacity(.22)">' + svg(id) + '</span>') +
+    openModal(show ? c.name : 'Mystery creature',
+      '<div class="dex-big' + (show ? '' : ' locked') + '">' + (show ? svg(id) : '<span style="display:inline-block;filter:brightness(0) opacity(.22)">' + svg(id) + '</span>') +
       '<div style="font-weight:900;color:' + R.color + '">' + '★'.repeat(R.stars) + ' ' + R.label + ' · ' + c.points + ' pts</div></div>' +
       (n ? '<p>🗑️ Real-life litter: <b>' + esc(c.item) + '</b><br>🎒 You\'ve caught <b>' + n + '</b>.</p><p>💡 ' + esc(c.fact) + '</p>'
+         : met ? '<p>🏃 You met this one in the <b>Litter Dungeon</b>! Spot the real thing (<b>' + esc(c.item.toLowerCase()) + '</b>) to catch it for keeps.</p><p>💡 ' + esc(c.fact) + '</p>'
          : '<p>🔍 Hint: look for a <b>' + esc(c.item.toLowerCase()) + '</b>.</p>') + safety);
   }
 
@@ -659,7 +666,7 @@
     return Math.max(1, Math.floor(ms / 60000)) + 'm left';
   }
   function questCard(q, mine, claims) {
-    const v = G.questProgress(q, mine), done = !!claims[q.key] || v >= q.goal;
+    const v = G.questProgress(q, mine, me()), done = !!claims[q.key] || v >= q.goal;
     return '<div class="quest ' + (q.period === 'd' ? 'daily' : 'weekly') + (done ? ' done' : '') + '"><div class="q-ico">' + (done ? '✅' : q.icon) + '</div><div class="q-body">' +
       '<div class="q-title">' + esc(q.title) + '</div><div class="qbar' + (done ? ' done' : '') + '"><div style="width:' + Math.round(100 * v / q.goal) + '%"></div></div>' +
       '<div class="q-sub"><span>' + (done ? 'Done! 🎉' : v + ' / ' + q.goal) + '</span><span class="q-reward">' + (done ? '+' + q.reward + ' earned' : '🎁 +' + q.reward + ' pts') + '</span></div></div></div>';
@@ -696,6 +703,7 @@
     const crew = G.crewInfo(state, p.id);
     const ctx = { profile: p, crew: crew };
     const earned = Object.keys(p.badges || {}).length;
+    $('#lookCoins').textContent = G.ensureProfile(p).wallet.coins;
     $('#badgeSummary').textContent = earned + ' of ' + G.BADGES.length + ' badges earned';
     $('#statsBox').innerHTML =
       '<div class="stat wide"><span class="big-ico">' + p.avatar + '</span><div><div class="v" style="font-size:22px">Level ' + s.level.level + ' · ' + s.level.title + '</div><div class="l">' + s.points + ' points · ' + (s.level.next - s.points) + ' to next level</div></div></div>' +
@@ -1037,6 +1045,8 @@
     openModal('⚙️ Settings',
       '<label class="setting-row">🎵 Music <input type="checkbox" id="setMusic"' + (window.LMSound.prefs().music ? ' checked' : '') + '></label>' +
       '<label class="setting-row">🔊 Sounds <input type="checkbox" id="setSound"' + (window.LMSound.prefs().sfx ? ' checked' : '') + '></label>' +
+      '<div class="setting-row">🪙 Coins <b>' + G.ensureProfile(me()).wallet.coins + '</b></div>' +
+      '<button class="big-btn secondary small" id="setCloset">👕 Closet & Shop</button>' +
       '<button class="big-btn secondary small" id="setSafety">🦸 Safety Squad check</button>' +
       '<button class="big-btn secondary small" id="setExport">💾 Export my stuff (JSON)</button>' +
       '<label class="big-btn secondary small" style="display:flex;align-items:center;justify-content:center;cursor:pointer">📂 Import stuff<input type="file" accept="application/json,.json" id="setImport" hidden></label>' +
@@ -1047,6 +1057,7 @@
       '<p class="ob-motto">Keep it clean, crusader!</p><p class="copyright">© 2026 WingsCrew. All rights reserved.</p>');
     $('#setSound').addEventListener('change', function (e) { window.LMSound.setSfx(e.target.checked); chime('tap'); });
     $('#setMusic').addEventListener('change', function (e) { window.LMSound.setMusic(e.target.checked); });
+    $('#setCloset').addEventListener('click', function () { closeModal(); window.LMCloset.openCloset('wardrobe'); });
     $('#setSafety').addEventListener('click', function () { closeModal(); showOnboarding(true); });
     $('#setExport').addEventListener('click', exportData);
     $('#setImport').addEventListener('change', importData);
@@ -1258,6 +1269,47 @@
     (unlocked.badges || []).forEach(function (b) { celQueue.push(b); });
     el.classList.remove('hidden'); confetti(); chime(kind === 'ispy' ? 'ispy' : 'diff');
   }
+
+  // ---------- Litter Dungeon (runner) ----------
+  function ensureDungeon(pr) { if (!pr.dungeon) pr.dungeon = { runs: 0, best: 0, met: {}, log: [] }; return pr.dungeon; }
+  window.LMDungeonHost = {
+    // creature ids this player already knows (met in the dungeon or really caught)
+    known: function () { const d = ensureDungeon(me()), k = {}; Object.keys(d.met).forEach(function (i) { k[i] = 1; }); Object.keys(myStats().perType).forEach(function (i) { k[i] = 1; }); return k; },
+    best: function () { return ensureDungeon(me()).best; },
+    wallet: function () { return G.ensureProfile(me()).wallet.coins; },
+    // Award a finished (or tripped-up) run: points, coins, records, Litter Log unlocks, badge + quest + trophy checks.
+    finish: function (r) {
+      const pr = G.ensureProfile(me()), d = ensureDungeon(pr), now = Date.now(), today = G.dayKey(now), rec = pr.records;
+      let pts = r.pts, capped = false;
+      if (r.finished) {
+        const doneToday = d.log.filter(function (t) { return G.dayKey(t) === today; }).length;
+        if (doneToday >= 3) { pts = Math.min(pts, 10); capped = true; }
+      } else pts = Math.min(pts, 15);
+      const newMet = [];
+      if (r.finished) {
+        d.runs++; d.log.push(now);
+        r.tidied.forEach(function (id) { if (!d.met[id] && !myStats().perType[id]) newMet.push(id); d.met[id] = now; });
+        rec.bosses[r.boss] = now; if (r.bonks === 0) rec.noBonkRuns++;
+      }
+      d.best = Math.max(d.best, r.pts);
+      rec.bestDist = Math.max(rec.bestDist, r.dist); rec.bestCoins = Math.max(rec.bestCoins, r.coins);
+      rec.longestClean = Math.max(rec.longestClean, r.clean); rec.tidiedTotal += r.tidied.length;
+      // wallet: small payouts, capped per day (G.COIN_CAP.run)
+      const coinsRun = G.earnCoins(pr, Math.min(25, Math.floor(r.coins / 4)) + (r.finished ? 20 : 0), 'run', now);
+      pr.claims = pr.claims || {};
+      pr.claims['x:dg:' + now] = { ts: now, pts: pts, title: r.finished ? 'Litter Dungeon run' : 'Litter Dungeon try', demo: !!state.demoActive };
+      const un = G.evaluate(state, pr.id, now);
+      save(); renderHeader();
+      return { pts: pts, capped: capped, newMet: newMet, unlocked: un, coinsRun: coinsRun, coinsGoal: un.coins || 0, balance: pr.wallet.coins, coinCapHit: coinsRun < Math.min(25, Math.floor(r.coins / 4)) + (r.finished ? 20 : 0) };
+    },
+    done: function (unlocked) { renderAll(); if (unlocked) flushBadges(unlocked); }
+  };
+  $('#dungeonBtn').addEventListener('click', function () { window.LMDungeon.open(); });
+  window.LMCloset.init({ me: me, save: save, toast: toast, stats: myStats, confetti: confetti,
+    refresh: function () { renderHeader(); if (current === 'badges') renderBadges(); } });
+  $('#trophyBtn').addEventListener('click', function () { window.LMCloset.openTrophies(); });
+  $('#openCloset').addEventListener('click', function () { window.LMCloset.openCloset('wardrobe'); });
+  $('#openTrophies').addEventListener('click', function () { window.LMCloset.openTrophies(); });
 
   // ---------- demo data ----------
   function loadDemo() {

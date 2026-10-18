@@ -44,6 +44,8 @@
           <button class="round-btn" id="moveMeBtn" aria-label="Tap the map to set my spot">✋</button>
           <button class="round-btn mode-btn" id="ispyBtn" aria-label="I Spy on the way" title="On the way">🚗</button>
           <button class="round-btn mode-btn" id="roomBtn" aria-label="What's different at home" title="At home">🏠</button>
+          <button class="round-btn mode-btn" id="dungeonBtn" aria-label="Litter Dungeon run" title="Litter Dungeon">🏃</button>
+          <button class="round-btn mode-btn" id="trophyBtn" aria-label="Trophy Room" title="Trophy Room">🏆</button>
           <button class="round-btn" id="muteBtn" aria-label="Mute sound" title="Sound">🔊</button>
         </div>
         <div class="park-chip hidden" id="parkChip"></div>
@@ -78,6 +80,7 @@
           <p class="sub" id="badgeSummary">0 earned</p>
         </div>
         <div class="stats" id="statsBox"></div>
+        <div class="look-row" id="lookRow"><button class="big-btn secondary small" id="openCloset">👕 Closet · 🪙 <span id="lookCoins">0</span></button><button class="big-btn secondary small" id="openTrophies">🏆 Trophy Room</button></div>
         <div id="badgeBox"></div>
         <h2 class="section-title">Recent catches</h2>
         <ul class="recent" id="recentList"></ul>
@@ -191,6 +194,35 @@
     </div>
   </div>
 
+  <!-- Litter Dungeon (endless-runner mini game) -->
+  <div class="overlay dg-wrap hidden" id="dungeon" role="dialog" aria-modal="true" aria-label="Litter Dungeon">
+    <canvas id="dgCanvas"></canvas>
+    <button class="dg-btn dg-close" id="dgClose" aria-label="Exit Litter Dungeon">✖️</button>
+    <button class="dg-btn dg-mute" id="dgMute" aria-label="Mute sound">🔊</button>
+    <div class="dg-card hidden" id="dgCard"></div>
+  </div>
+
+  <!-- Closet (wardrobe + coin shop) and Trophy Room -->
+  <div class="overlay sheet-wrap hidden" id="closetSheet" role="dialog" aria-modal="true" aria-label="Closet">
+    <div class="sheet closet-sheet">
+      <div class="sheet-grip"></div>
+      <div class="sheet-head">
+        <h2>👕 Closet</h2>
+        <span class="coin-pill" id="clCoins">🪙 0</span>
+        <button class="icon-btn" id="clTrophy" aria-label="Open Trophy Room">🏆</button>
+        <button class="icon-btn" data-close aria-label="Close">✖️</button>
+      </div>
+      <div id="closetBody"></div>
+    </div>
+  </div>
+  <div class="overlay sheet-wrap hidden" id="trophySheet" role="dialog" aria-modal="true" aria-label="Trophy Room">
+    <div class="sheet closet-sheet">
+      <div class="sheet-grip"></div>
+      <div class="sheet-head"><h2>🏆 Trophy Room</h2><button class="icon-btn" data-close aria-label="Close">✖️</button></div>
+      <div id="trophyBody"></div>
+    </div>
+  </div>
+
   <!-- Boss challenge sheet -->
   <div class="overlay sheet-wrap hidden" id="bossSheet" role="dialog" aria-modal="true" aria-labelledby="bossTitle">
     <div class="sheet boss-sheet">
@@ -235,6 +267,8 @@
   <script src="js/activities.js"></script>
   <script src="js/sound.js"></script>
   <script src="js/game.js"></script>
+  <script src="js/closet.js"></script>
+  <script src="js/dungeon.js"></script>
   <script src="js/firebase-config.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>

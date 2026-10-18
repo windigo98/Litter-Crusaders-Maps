@@ -53,6 +53,14 @@
     ispy: function () { seq([988, 1319], 0.09, 'sine', 0.25, 0.45); const t = ctx.currentTime + 0.2; tone(1760, t, 0.4, 'sine', 0.15); },
     diff: function () { seq([587, 740, 880, 1175], 0.07, 'triangle', 0.2, 0.45); },
     crewJoin: function () { seq([392, 494, 587, 784], 0.12, 'triangle', 0.3, 0.45); const t = ctx.currentTime + 0.5; tone(392, t, 0.7, 'sine', 0.25); tone(587, t, 0.7, 'sine', 0.2); },
+    dgLane: function () { noise(ctx.currentTime, 0.07, 0.18, 2200); },
+    dgJump: function () { tone(330, ctx.currentTime, 0.2, 'sine', 0.3, null, 760); },
+    dgSlide: function () { const t = ctx.currentTime; noise(t, 0.2, 0.22, 700); tone(520, t, 0.18, 'sine', 0.18, null, 260); },
+    dgCoin: function () { const t = ctx.currentTime; tone(1175, t, 0.07, 'square', 0.14); tone(1568, t + 0.06, 0.16, 'square', 0.14); },
+    dgTidy: function () { seq([659, 880, 1175, 1568], 0.06, 'triangle', 0.2, 0.5); },
+    dgBump: function () { const t = ctx.currentTime; tone(150, t, 0.2, 'sine', 0.45, null, 60); noise(t, 0.1, 0.25, 350); },
+    buy: function () { const t = ctx.currentTime; tone(1568, t, 0.07, 'square', 0.14); tone(2093, t + 0.07, 0.2, 'square', 0.14); seq([0, 0, 523, 659, 784, 1047], 0.07, 'triangle', 0.25, 0.4); },
+    trophy: function () { seq([523, 659, 784, 1047, 784, 1047, 1319], 0.1, 'triangle', 0.3, 0.5); const t = ctx.currentTime + 0.75; [1047, 1319, 1568].forEach(function (f) { tone(f, t, 1.0, 'sine', 0.2); }); },
     warn: function () { const t = ctx.currentTime; tone(523, t, 0.35, 'sine', 0.3); tone(415, t + 0.25, 0.5, 'sine', 0.3); }
   };
   function play(name) {
