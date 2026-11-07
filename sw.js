@@ -1,8 +1,8 @@
 /* Litter Crusaders Maps service worker: caches the app shell so it opens offline.
    Map tiles are NOT pre-cached (OpenStreetMap tile policy) — they load live. */
-const CACHE = 'litter-crusaders-maps-v10';
+const CACHE = 'litter-crusaders-maps-v14';
 const SHELL = ['./', 'index.html', 'css/styles.css', 'js/creatures.js', 'js/bosses.js', 'js/parks.js', 'js/activities.js', 'js/sound.js', 'js/game.js', 'js/closet.js', 'js/dungeon.js', 'js/firebase-config.js', 'js/crew-sync.js', 'js/app.js',
-  'vendor/leaflet.js', 'vendor/leaflet.css', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png'];
+  'vendor/leaflet.js', 'vendor/leaflet.css', 'vendor/images/layers.png', 'vendor/images/layers-2x.png', 'vendor/images/marker-icon.png', 'vendor/images/marker-icon-2x.png', 'vendor/images/marker-shadow.png', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'assets/brand/logo.png', 'assets/brand/logo.webp'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', (e) => {
   e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
