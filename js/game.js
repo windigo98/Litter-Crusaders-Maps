@@ -148,6 +148,7 @@
   function prog(cur, goal) { return [Math.min(cur, goal), goal]; }
   const BADGES = [
     // Getting started
+    { id: 'safety_spotter', cat: 'Getting started', icon: '🦺', name: 'Safety Spotter', desc: 'Found something dangerous, didn\'t touch it, and told a grown-up', test: function (s, x) { return !!x.profile.safetySpotterAt; } },
     { id: 'glove_guardian', cat: 'Getting started', icon: '🧤', name: 'Glove Guardian', desc: 'Took the Safety Squad pledge', test: function (s, x) { return !!x.profile.safetyPledgeAt; } },
     { id: 'first_catch', cat: 'Getting started', icon: '🎉', name: 'First Catch', desc: 'Catch your very first creature', test: function (s) { return s.items >= 1; }, prog: function (s) { return prog(s.items, 1); } },
     { id: 'first_photo', cat: 'Getting started', icon: '📸', name: 'Snapshot Scout', desc: 'Snap a flex pic of a catch', test: function (s) { return s.photos >= 1; } },

@@ -431,8 +431,36 @@
       const tag = c.safety === 'adult' ? '<span class="tag adult">Grown-ups only</span>' : c.safety === 'gloves' ? '<span class="tag gloves">Gloves!</span>' : '';
       return '<button class="pick" data-id="' + c.id + '">' + tag + svg(c.id) + '<span class="p-name">' + esc(c.name) + '</span><span class="p-item">' + esc(c.item) + '</span></button>';
     }).join('') ;
-    $$('#pickGrid .pick').forEach(function (b) { b.addEventListener('click', function () { choose(b.dataset.id); }); });
+    grid.insertAdjacentHTML('afterbegin', '<button class="pick hazard-pick" id="hazardBtn" aria-label="Found something dangerous? Don\'t touch it">' +
+      '<span class="hz-ico" aria-hidden="true">🚫</span><span class="p-name">Danger find?</span><span class="p-item">needle, broken stuff, mystery goo</span></button>');
+    $('#hazardBtn').addEventListener('click', openHazard);
+    $$('#pickGrid .pick:not(.hazard-pick)').forEach(function (b) { b.addEventListener('click', function () { choose(b.dataset.id); }); });
     $('#catchSheet').classList.remove('hidden');
+  }
+  // Report-only hazard: never a catch, no points. Kid stops, gets a grown-up.
+  function openHazard() {
+    chime('warn');
+    $('#catchSheet').classList.add('hidden');
+    openModal('🚫 Danger find: don\'t touch!',
+      '<div class="safety-note adult hazard-card">' +
+        '<p>🛑 <b>STOP.</b> Don\'t touch it, kick it, or pick it up. Not even with gloves or a grabber.</p>' +
+        '<p>🧑‍🍼 <b>Get a grown-up</b> right now and show them from far away.</p>' +
+        '<p>📞 Grown-ups: tell the city or park (many cities use 311) so trained helpers can clean it up safely.</p>' +
+        '<p class="small-print">Needles, broken glass piles, sharp metal, mystery goo, batteries leaking, dead animals: all count as danger finds.</p>' +
+      '</div>' +
+      '<button class="big-btn" id="hazardTold">✅ I told a grown-up</button>' +
+      '<button class="big-btn secondary small" id="hazardBack">Back</button>');
+    $('#hazardBack').addEventListener('click', closeModal);
+    $('#hazardTold').addEventListener('click', function () {
+      const p = me();
+      p.hazardReports = (p.hazardReports || 0) + 1;
+      if (!p.safetySpotterAt) p.safetySpotterAt = Date.now();
+      const unlocked = G.evaluate(state, p.id, Date.now());
+      save(); closeModal(); renderHeader();
+      const got = (unlocked && unlocked.badges || []).some(function (b) { return b.id === 'safety_spotter'; });
+      chime(got ? 'badge' : 'tap');
+      toast(got ? '🦺 Safety Spotter badge! Telling a grown-up was the brave move.' : '🦺 Great job staying safe, Safety Spotter!');
+    });
   }
   function choose(id) {
     pick = G.byId[id]; count = 1; photoData = null;
@@ -1049,25 +1077,117 @@
       '<button class="big-btn secondary small" id="setCloset">👕 Closet & Shop</button>' +
       '<button class="big-btn secondary small" id="setSafety">🦸 Safety Squad check</button>' +
       '<button class="big-btn secondary small" id="setExport">💾 Export my stuff (JSON)</button>' +
-      '<label class="big-btn secondary small" style="display:flex;align-items:center;justify-content:center;cursor:pointer">📂 Import stuff<input type="file" accept="application/json,.json" id="setImport" hidden></label>' +
+      '<button class="big-btn secondary small" id="setImport">📂 Import stuff</button>' +
       (state.demoActive ? '<button class="big-btn small" id="setDemoOff">🧹 Yeet demo data</button>' : '<button class="big-btn secondary small" id="setDemo">✨ Load demo vibes</button>') +
       '<button class="big-btn danger small" id="setReset">🗑️ Reset the whole vibe</button>' +
       '<p class="small-print">🔒 Nicknames only — no kid emails. Photos stay here. Optional fam/class sync shares blurry pins (~150 m) + nicknames when a grown-up plugs in free Firebase (CREW.md). ' +
       'Map data © OpenStreetMap. Demo mode drops pretend catches nearby — yeet it whenever.</p>' +
-      '<p class="ob-motto">Keep it clean, crusader!</p><p class="copyright">© 2026 WingsCrew. All rights reserved.</p>');
+      '<button class="big-btn secondary small" id="setWingsCrew">🌐 More from WingsCrew</button>' +
+      '<p class="ob-motto">Keep it clean, crusader!</p><p class="copyright">© 2026 <a href="https://wingscrew.com/" class="wc-link" target="_blank" rel="noopener">WingsCrew</a>. All rights reserved.</p>');
+    $('#setWingsCrew').addEventListener('click', function (e) { e.preventDefault(); openWingsCrew(); });
     $('#setSound').addEventListener('change', function (e) { window.LMSound.setSfx(e.target.checked); chime('tap'); });
     $('#setMusic').addEventListener('change', function (e) { window.LMSound.setMusic(e.target.checked); });
     $('#setCloset').addEventListener('click', function () { closeModal(); window.LMCloset.openCloset('wardrobe'); });
     $('#setSafety').addEventListener('click', function () { closeModal(); showOnboarding(true); });
-    $('#setExport').addEventListener('click', exportData);
-    $('#setImport').addEventListener('change', importData);
+    // Backups hold nicknames + exact (unblurred) pins, so a grown-up says OK first.
+    $('#setExport').addEventListener('click', function () {
+      requestGrownUpApproval('export').then(function (ok) { if (ok) { closeModal(); exportData(); } });
+    });
+    $('#setImport').addEventListener('click', function () {
+      requestGrownUpApproval('import').then(function (ok) { if (ok) { closeModal(); pickImportFile(); } });
+    });
     const demo = $('#setDemo'); if (demo) demo.addEventListener('click', function () { loadDemo(); closeModal(); });
     const demoOff = $('#setDemoOff'); if (demoOff) demoOff.addEventListener('click', function () { removeDemo(); closeModal(); });
     $('#setReset').addEventListener('click', function () {
-      if (!confirm('Delete ALL players, catches, badges and photos on this device?')) return;
-      localStorage.removeItem(STORE_KEY); location.reload();
+      requestGrownUpApproval('reset').then(function (ok) {
+        if (!ok) return;
+        closeModal();
+        if (!confirm('Delete ALL players, catches, badges and photos on this device?')) return;
+        localStorage.removeItem(STORE_KEY); location.reload();
+      });
     });
   });
+
+  // ---------- grown-up check ----------
+  // requestGrownUpApproval(reason) -> Promise<boolean>
+  // TODO(crew-sync): once Firebase crew sync exists, this should first try
+  // "ask a caregiver's phone to approve" (push an approval request to the crew's
+  // grown-up device and resolve when they tap OK), and fall back to the local
+  // math check below when offline / no crew. Callers only rely on the Promise,
+  // so swapping the implementation here is the only change needed.
+  const GATE_COPY = {
+    export: 'Backups include where you\'ve been, so a grown-up needs to say OK.',
+    import: 'Importing swaps out everything on this phone, so a grown-up needs to say OK.',
+    'Open WingsCrew website': 'This opens the WingsCrew website outside the app, so a grown-up needs to say OK.',
+    reset: 'Resetting wipes everyone\'s catches and badges, so a grown-up needs to say OK.'
+  };
+  // Every outside WingsCrew link/button goes through the grown-up check first.
+  const WINGSCREW_URL = 'https://wingscrew.com/';
+  function openWingsCrew() {
+    requestGrownUpApproval('Open WingsCrew website').then(function (ok) {
+      if (!ok) return;
+      closeModal();
+      window.open(WINGSCREW_URL, '_blank', 'noopener');
+    });
+  }
+  // Capture-phase delegate so no .wc-link anchor (header, footer, settings) can bypass the gate.
+  document.addEventListener('click', function (e) {
+    const a = e.target.closest && e.target.closest('a.wc-link');
+    if (!a) return;
+    e.preventDefault(); e.stopPropagation();
+    openWingsCrew();
+  }, true);
+  function requestGrownUpApproval(reason) {
+    return localMathGate(reason);
+  }
+  function makeGateQuestion() {
+    const a = 12 + Math.floor(Math.random() * 88); // 12–99
+    const b = 3 + Math.floor(Math.random() * 7);   // 3–9
+    return { a: a, b: b, answer: a * b };
+  }
+  function localMathGate(reason) {
+    return new Promise(function (resolve) {
+      let q = makeGateQuestion(); let done = false;
+      openModal('Grown-up check 🧑‍🍼',
+        '<div class="gate">' +
+        '<p>' + (GATE_COPY[reason] || GATE_COPY.export) + '</p>' +
+        '<label class="field gate-q" for="gateAnswer">What is <span id="gateQ"></span>?</label>' +
+        '<input type="number" inputmode="numeric" id="gateAnswer" class="gate-input" autocomplete="off" aria-describedby="gateMsg">' +
+        '<p class="gate-msg hidden" id="gateMsg" role="status"></p>' +
+        '<div class="gate-actions"><button class="big-btn secondary small" id="gateCancel">Cancel</button>' +
+        '<button class="big-btn small" id="gateGo">Continue</button></div>' +
+        '<p class="small-print">Kids: hand the phone to your grown-up 🙌 Soon a caregiver\'s phone will be able to approve this instead.</p>' +
+        '</div>');
+      const input = $('#gateAnswer'), msg = $('#gateMsg');
+      function showQ() { $('#gateQ').textContent = q.a + ' × ' + q.b; input.value = ''; }
+      function finish(ok) {
+        if (done) return; done = true;
+        obs.disconnect();
+        resolve(ok);
+      }
+      showQ(); setTimeout(function () { input.focus(); }, 50);
+      // Closing the modal any other way (✖️ or backdrop) counts as Cancel.
+      const obs = new MutationObserver(function () { if ($('#modal').classList.contains('hidden')) finish(false); });
+      obs.observe($('#modal'), { attributes: true, attributeFilter: ['class'] });
+      function check() {
+        const v = parseInt(input.value, 10);
+        if (v === q.answer) { finish(true); return; }
+        q = makeGateQuestion(); showQ();
+        msg.textContent = 'Not quite — no worries! Here\'s a fresh one for your grown-up.';
+        msg.classList.remove('hidden'); input.focus();
+      }
+      $('#gateGo').addEventListener('click', check);
+      input.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); check(); } });
+      $('#gateCancel').addEventListener('click', function () { finish(false); closeModal(); });
+    });
+  }
+  function pickImportFile() {
+    // Built fresh after the gate (the old <label><input type=file> opened the picker instantly).
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = 'application/json,.json'; inp.hidden = true;
+    inp.addEventListener('change', function (e) { importData(e); inp.remove(); });
+    document.body.appendChild(inp); inp.click();
+  }
   function exportData() {
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
