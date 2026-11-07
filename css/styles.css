@@ -580,10 +580,11 @@ main { position: relative; flex: 1; min-height: 0; }
 .dg-stats.four { grid-template-columns: repeat(4, 1fr); } .dg-card .dg-hero svg { width: 56px; height: 56px; } .dg-card .dg-hero svg.boss-svg { width: 76px; height: 76px; } .dg-card h2 { font-size: 23px; } .dg-note { font-size: 13px; padding: 6px 9px; } .dg-pts { font-size: 26px; margin: 2px 0; } .dg-new svg { width: 42px; height: 42px; }
 
 /* WingsCrew credit (header) + links */
-.wc-credit { display: flex; align-items: center; gap: 3px; height: 14px; width: max-content; font-size: 10px; font-weight: 800; line-height: 1; color: rgba(255,255,255,.92); text-decoration: none; white-space: nowrap; margin: 0 0 2px; }
+.wc-credit { display: flex; align-items: center; gap: 3px; height: 14px; width: max-content; font-size: 10px; font-weight: 800; line-height: 1; color: rgba(255,255,255,.92); text-decoration: none; white-space: nowrap; margin: 0 0 2px; padding: 0; }
 .wc-credit img { height: 18px; margin: -2px 0; width: auto; display: block; }
 .wc-credit:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; border-radius: 4px; }
-.copyright .wc-link { color: inherit; text-decoration: underline; }
+.copyright .wc-link { color: inherit; font: inherit; line-height: inherit; text-decoration: underline; padding: 0; display: inline; vertical-align: baseline; }
+.copyright .wc-link:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; border-radius: 4px; }
 
 .pick.hazard-pick { grid-column: 1 / -1; flex-direction: row; gap: 10px; justify-content: center; background: #ffe9e9; border-color: #ef5350; min-height: 0; padding: 10px; }
 .pick.hazard-pick .hz-ico { font-size: 28px; }

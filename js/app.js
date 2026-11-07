@@ -1083,7 +1083,7 @@
       '<p class="small-print">🔒 Nicknames only — no kid emails. Photos stay here. Optional fam/class sync shares blurry pins (~150 m) + nicknames when a grown-up plugs in free Firebase (CREW.md). ' +
       'Map data © OpenStreetMap. Demo mode drops pretend catches nearby — yeet it whenever.</p>' +
       '<button class="big-btn secondary small" id="setWingsCrew">🌐 More from WingsCrew</button>' +
-      '<p class="ob-motto">Keep it clean, crusader!</p><p class="copyright">© 2026 <a href="https://wingscrew.com/" class="wc-link" target="_blank" rel="noopener">WingsCrew</a>. All rights reserved.</p>');
+      '<p class="ob-motto">Keep it clean, crusader!</p><p class="copyright">© 2026 <button type="button" class="wc-link" aria-label="WingsCrew (opens website, grown-up check first)">WingsCrew</button>. All rights reserved.</p>');
     $('#setWingsCrew').addEventListener('click', function (e) { e.preventDefault(); openWingsCrew(); });
     $('#setSound').addEventListener('change', function (e) { window.LMSound.setSfx(e.target.checked); chime('tap'); });
     $('#setMusic').addEventListener('change', function (e) { window.LMSound.setMusic(e.target.checked); });
@@ -1130,10 +1130,11 @@
       window.open(WINGSCREW_URL, '_blank', 'noopener');
     });
   }
-  // Capture-phase delegate so no .wc-link anchor (header, footer, settings) can bypass the gate.
+  // Capture-phase delegate. These are buttons with no href, so click, Enter,
+  // and Space reach the gate, and long-press / middle-click have no URL to open.
   document.addEventListener('click', function (e) {
-    const a = e.target.closest && e.target.closest('a.wc-link');
-    if (!a) return;
+    const control = e.target.closest && e.target.closest('button.wc-link');
+    if (!control) return;
     e.preventDefault(); e.stopPropagation();
     openWingsCrew();
   }, true);
